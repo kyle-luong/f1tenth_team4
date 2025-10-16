@@ -1,0 +1,3 @@
+#!/bin/bash
+
+scp -r /home/hopper/github/f1tenth-course-labs/race nvidia@192.168.1.1:~/catkin_ws/src
