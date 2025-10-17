@@ -6,7 +6,7 @@ from race.msg import pid_input
 
 # Some useful variable declarations.
 angle_range = 240	# Hokuyo 4LX has 240 degrees FoV for scan
-forward_projection = 1.5	# distance (in m) that we project the car forward for correcting the error. You have to adjust this.
+forward_projection = 0.5	# distance (in m) that we project the car forward for correcting the error. You have to adjust this.
 desired_distance = 1	# distance from the wall (in m). (defaults to right wall). You need to change this for the track
 vel = 15 		# this vel variable is not really used here.
 error = 0.0		# initialize the error
@@ -44,7 +44,7 @@ def callback(data):
 	print("Increment: ", data.angle_increment)
 	print("Range min: ", data.range_min)
 	print("Range max: ", data.range_max)
-	theta = -50 # you need to try different values for theta
+	theta = -30 # you need to try different values for theta
 	a = getRange(data,math.radians(theta)) # obtain the ray distance for theta
 	b = getRange(data,math.radians(-90))	# obtain the ray distance for 0 degrees (i.e. directly to the right of the car)
 	
@@ -66,7 +66,7 @@ def callback(data):
 	error = desired_distance - cd
 	print("Error: ", error)
 	if(math.isnan(error)):
-		error = 10
+		error = -10
 
 	msg = pid_input()	# An empty msg is created of the type pid_input
 	# this is the error that you want to send to the PID for steering correction.
