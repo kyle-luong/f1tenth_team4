@@ -1,0 +1,5 @@
+<launch>
+    <node pkg="race" type="control.py" name="control" output="screen"/>
+    <node pkg="race" type="dist_finder.py" name="dist_finder" output="screen"/>
+    <!-- <node pkg="race" type="rviz_test.py" name="rviz_test" output="screen"/> -->
+</launch>
