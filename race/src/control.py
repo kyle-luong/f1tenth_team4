@@ -46,20 +46,16 @@ def control(data):
 	# An empty AckermannDrive message is created. You will populate the steering_angle and the speed fields.
 	command = AckermannDrive()
 
-	# TODO: Make sure the steering value is within bounds [-100,100]
-	if not (abs(angle) <= 100):
-		print("Out of bounds steering angle", angle, " correcting within bounds")
-		angle = max(-100, min(100, angle))
-	angle = -angle
-	command.steering_angle = angle
-	print("Steering angle is ", angle)
+	# Make sure the steering value is within bounds [-100,100]
+	angle = max(-100, min(100, angle))
+	print("Steering angle", angle)
+	command.speed = angle
 
-	# TODO: Make sure the velocity is within bounds [0,100]
-	if not (0 <= vel_input <= 100):
-		print("Out of bounds velocity input", vel_input, "correcting within bounds")
-		vel_input = max(0, min(100, vel_input))
-	command.speed = vel_input
-	print("Velocity is ", vel_input)
+	# Make sure the velocity is within bounds [0,100]
+	velocity = vel_input * data.pid_vel # scale by pid vel 
+	velocity = max(0, min(100, velocity))
+	print("Velocity", velocity)
+	command.speed = velocity
 
 	# Move the car autonomously
 	command_pub.publish(command)

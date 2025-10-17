@@ -22,16 +22,21 @@ def getRange(data,angle):
     # Outputs length in meters to object with angle in lidar scan field of view
     # Make sure to take care of NaNs etc.
     #TODO: implement
+
+	# from prev comments, angle should be a degree => convert to radians to do arithmetic
+	angle = math.radians(angle)
 	i = int(math.floor((angle - data.angle_min) / data.angle_increment))
-	print("I: ", i)
-	if angle < data.angle_min or angle > data.angle_max:
-		return 100000000
+	print("data angle index: ", i)
 	
+	# index out of bounds
 	if i < 0 or i >= len(data.ranges):
-		return 10000000
+		return 100
+	
 	dataPoint = data.ranges[i]
-	if dataPoint < data.range_min or dataPoint > data.range_max:
-		return 10000000000
+
+	# invalid reading
+	if math.isnan(dataPoint) or dataPoint < data.range_min or dataPoint > data.range_max:
+        return 100
 	
 	return dataPoint
 
@@ -43,29 +48,32 @@ def callback(data):
 	print("Increment: ", data.angle_increment)
 	print("Range min: ", data.range_min)
 	print("Range max: ", data.range_max)
-	theta = -30 # you need to try different values for theta
-	a = getRange(data, math.radians(theta)) # obtain the ray distance for theta
-	b = getRange(data, math.radians(-90))	# obtain the ray distance for 0 degrees (i.e. directly to the right of the car)
 	
+	theta = 50 # you need to try different values for theta
+
+	a = getRange(data, theta) # obtain the ray distance for theta
+	b = getRange(data, 0)	# obtain the ray distance for 0 degrees (i.e. directly to the right of the car)
+
 	print("Distance side: ", a)
 	print("Distance in front: ", b)
-	swing = math.radians(theta + 90)
+	swing = math.radians(theta)
 
 	## Your code goes here to determine the projected error as per the alrorithm
 	# Compute Alpha, AB, and CD..and finally the error.
 	# TODO: implement
 
-
 	alpha = math.atan((a * math.cos(swing) - b) / (a * math.sin(swing)))
-	print("alpha: ", math.degrees(alpha))
 	ab = b * math.cos(alpha)
-	print("Ab: ", ab)
 	cd = ab + forward_projection * math.sin(alpha)
-	print("Cd: ", cd)
 	error = desired_distance - cd
-	print("Error: ", error)
-	if(math.isnan(error)):
+	if (math.isnan(error)):
 		error = -10
+
+	print("alpha: ", math.degrees(alpha))
+	print("AB: ", ab)
+	print("CD: ", cd)
+	print("Error: ", error)
+
 
 	msg = pid_input()	# An empty msg is created of the type pid_input
 	# this is the error that you want to send to the PID for steering correction.
