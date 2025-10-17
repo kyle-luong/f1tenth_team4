@@ -49,7 +49,7 @@ def control(data):
 	# Make sure the steering value is within bounds [-100,100]
 	angle = max(-100, min(100, angle))
 	print("Steering angle", angle)
-	command.speed = angle
+	command.steering_angle = angle
 
 	# Make sure the velocity is within bounds [0,100]
 	velocity = vel_input * data.pid_vel # scale by pid vel 
