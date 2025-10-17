@@ -5,14 +5,11 @@ from race.msg import pid_input
 from ackermann_msgs.msg import AckermannDrive
 
 # PID Control Params
-kp = 300 #TODO
-kd = 0.0 #TODO
+kp = 5 #TODO
+kd = 5 #TODO
 ki = 0.0 #TODO
 servo_offset = 0.0	# zero correction offset in case servo is misaligned and has a bias in turning.
 prev_error = 0.0
-global angle
-
-angle = 0
 
 # This code can input desired velocity from the user.
 # velocity must be between [0,100] to move forward.
@@ -25,7 +22,7 @@ vel_input = 15.0	#TODO
 
 # Publisher for moving the car.
 # TODO: Use the coorect topic /car_x/offboard/command. The multiplexer listens to this topic
-command_pub = rospy.Publisher('/car_4/multiplexer/command', AckermannDrive, queue_size = 1)
+command_pub = rospy.Publisher('/car_4/multiplexer/command', AckermannDrive, queue_size = 10)
 
 def control(data):
 	global prev_error
@@ -33,8 +30,6 @@ def control(data):
 	global kp
 	global kd
 	global angle
-
-	print("PID Control Node is Listening to error")
 
 	## Your PID code goes here
 	#TODO: Use kp, ki & kd to implement a PID controller
@@ -52,10 +47,19 @@ def control(data):
 	command = AckermannDrive()
 
 	# TODO: Make sure the steering value is within bounds [-100,100]
-	command.steering_angle = -angle
+	if not (abs(angle) <= 100):
+		print("Out of bounds steering angle", angle, " correcting within bounds")
+		angle = max(-100, min(100, angle))
+	angle = -angle
+	command.steering_angle = angle
+	print("Steering angle is ", angle)
 
 	# TODO: Make sure the velocity is within bounds [0,100]
+	if not (0 <= vel_input <= 100):
+		print("Out of bounds velocity input", vel_input, "correcting within bounds")
+		vel_input = max(0, min(100, vel_input))
 	command.speed = vel_input
+	print("Velocity is ", vel_input)
 
 	# Move the car autonomously
 	command_pub.publish(command)
