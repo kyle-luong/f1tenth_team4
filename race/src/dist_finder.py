@@ -46,21 +46,25 @@ def callback(data):
 	print("Range max: ", data.range_max)
 	theta = -50 # you need to try different values for theta
 	a = getRange(data,math.radians(theta)) # obtain the ray distance for theta
-	b = getRange(data,0)	# obtain the ray distance for 0 degrees (i.e. directly to the right of the car)
+	b = getRange(data,math.radians(-90))	# obtain the ray distance for 0 degrees (i.e. directly to the right of the car)
 	
 	print("Distance side: ", a)
 	print("Distance in front: ", b)
-	swing = math.radians(theta)
+	swing = math.radians(theta + 90)
 
 	## Your code goes here to determine the projected error as per the alrorithm
 	# Compute Alpha, AB, and CD..and finally the error.
 	# TODO: implement
 
 
-	alpha = math.atan((a * math.cos(theta) - b) / a * math.sin(theta))
+	alpha = math.atan((a * math.cos(swing) - b) / (a * math.sin(swing)))
+	print("alpha: ", math.degrees(alpha))
 	ab = b * math.cos(alpha)
+	print("Ab: ", ab)
 	cd = ab + forward_projection * math.sin(alpha)
+	print("Cd: ", cd)
 	error = desired_distance - cd
+	print("Error: ", error)
 	if(math.isnan(error)):
 		error = 10
 

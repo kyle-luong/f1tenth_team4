@@ -25,7 +25,7 @@ vel_input = 10.0	#TODO
 
 # Publisher for moving the car.
 # TODO: Use the coorect topic /car_x/offboard/command. The multiplexer listens to this topic
-command_pub = rospy.Publisher('/car_4/offboard/command', AckermannDrive, queue_size = 1)
+command_pub = rospy.Publisher('/car_4/multiplexer/command', AckermannDrive, queue_size = 1)
 
 def control(data):
 	global prev_error
@@ -52,7 +52,7 @@ def control(data):
 	command = AckermannDrive()
 
 	# TODO: Make sure the steering value is within bounds [-100,100]
-	command.steering_angle = angle
+	command.steering_angle = -angle
 
 	# TODO: Make sure the velocity is within bounds [0,100]
 	command.speed = vel_input
