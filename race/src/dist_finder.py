@@ -6,9 +6,9 @@ from race.msg import pid_input
 
 # Some useful variable declarations.
 angle_range = 240	# Hokuyo 4LX has 240 degrees FoV for scan
-forward_projection = 1.5	# distance (in m) that we project the car forward for correcting the error. You have to adjust this.
-desired_distance = 1.5	# distance from the wall (in m). (defaults to right wall). You need to change this for the track
-vel = 15 		# this vel variable is not really used here.
+forward_projection = 2	# distance (in m) that we project the car forward for correcting the error. You have to adjust this.
+desired_distance = 0.65	# distance from the wall (in m). (defaults to right wall). You need to change this for the track
+vel = 20 		# this vel variable is not really used here.
 error = 0.0		# initialize the error
 car_length = 0.50 # Traxxas Rally is 20 inches or 0.5 meters. Useful variable.
 
@@ -18,20 +18,23 @@ pub = rospy.Publisher('error', pid_input, queue_size=10)
 
 def getRange(data,angle):
 	# data: single message from topic /scan
-    # angle: between -30 to 210 degrees, where 0 degrees is directly to the right, and 90 degrees is directly in front
+    # angle: between -30 to 210 degrees, where    0 degrees is directly to the right, and 90 degrees is directly in front
     # Outputs length in meters to object with angle in lidar scan field of view
     # Make sure to take care of NaNs etc.
     #TODO: implement
+
+	
 	i = int(math.floor((angle - data.angle_min) / data.angle_increment))
 	print("I: ", i)
 	if angle < data.angle_min or angle > data.angle_max:
-		return 100000000
+		return float('inf')
 	
 	if i < 0 or i >= len(data.ranges):
-		return 10000000
+		return float('inf')
+
 	dataPoint = data.ranges[i]
 	if dataPoint < data.range_min or dataPoint > data.range_max:
-		return 10000000000
+		return float('inf')
 	
 	return dataPoint
 
@@ -43,12 +46,15 @@ def callback(data):
 	print("Increment: ", data.angle_increment)
 	print("Range min: ", data.range_min)
 	print("Range max: ", data.range_max)
-	theta = -30 # you need to try different values for theta
+	theta = -25 # you need to try different values for theta
+	print(math.radians(theta))
+
 	a = getRange(data, math.radians(theta)) # obtain the ray distance for theta
+	front = getRange(data, 0)
 	b = getRange(data, math.radians(-90))	# obtain the ray distance for 0 degrees (i.e. directly to the right of the car)
 	
-	print("Distance side: ", a)
-	print("Distance in front: ", b)
+	print("Distance side: ", b)
+	print("Distance in front: ", front)
 	swing = math.radians(theta + 90)
 
 	## Your code goes here to determine the projected error as per the alrorithm
@@ -64,6 +70,7 @@ def callback(data):
 	print("Cd: ", cd)
 	error = desired_distance - cd
 	print("Error: ", error)
+	# print("desired distance: ", desired_distance)
 	if(math.isnan(error)):
 		error = -10
 

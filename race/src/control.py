@@ -3,13 +3,21 @@ import math
 import rospy
 from race.msg import pid_input
 from ackermann_msgs.msg import AckermannDrive
+from std_msgs.msg import Float32
 
 # PID Control Params
-kp = 5 #TODO
-kd = 5 #TODO
+kp = 100 #TODO
+kd = 85 #TODO
 ki = 0.0 #TODO
 servo_offset = 0.0	# zero correction offset in case servo is misaligned and has a bias in turning.
 prev_error = 0.0
+
+max_error = 1.5 # meters
+
+# dynamic velocity constants
+vel_kp = 50
+vel_min = 20
+vel_max = 30
 
 # This code can input desired velocity from the user.
 # velocity must be between [0,100] to move forward.
@@ -18,7 +26,7 @@ prev_error = 0.0
 # 25: Slow and steady
 # 35: Nice Autonomous Pace
 # > 40: Careful, what you do here. Only use this if your autonomous steering is very reliable.
-vel_input = 15.0	#TODO
+vel_input = 35.0	#TODO
 
 # Publisher for moving the car.
 # TODO: Use the coorect topic /car_x/offboard/command. The multiplexer listens to this topic
@@ -30,6 +38,7 @@ def control(data):
 	global kp
 	global kd
 	global angle
+	global max_error
 
 	## Your PID code goes here
 	#TODO: Use kp, ki & kd to implement a PID controller
@@ -37,34 +46,56 @@ def control(data):
 	# 1. Scale the error
 	# 2. Apply the PID equation on error to compute steering
 
-	error = data.pid_error
+	error_msg = data.pid_error
+
+	# scale the error to be normalized -1 to 1
+	error_raw = max(-max_error, min(max_error, error_msg))
+	error = error_raw / max_error
+
 	p = kp * error
-	d = kd * (prev_error - error)
+	d = kd * (error - prev_error)
 
 	angle = p + d
 
-	# An empty AckermannDrive message is created. You will populate the steering_angle and the speed fields.
-	command = AckermannDrive()
+	# clamp steering angle -100 to 100s
+	if angle > 100:
+		angle = 100
+	elif angle < -100:
+		angle = -100
+
+	angle = -angle
+
+	# dynamic velocity
+	vel_error = abs(error_msg)
+
+	if vel_error > max_error:
+		vel_error = max_error
+	
+	vel_input = vel_max - (vel_max - vel_min) * vel_error
+
+	# clamp velocity from vel_min to vel_max
+	if vel_input > vel_max:
+		vel_input = vel_max
+	elif vel_input < vel_min:
+		vel_input = vel_min
 
 	# TODO: Make sure the steering value is within bounds [-100,100]
-	if not (abs(angle) <= 100):
-		print("Out of bounds steering angle", angle, " correcting within bounds")
-		angle = max(-100, min(100, angle))
-	angle = -angle
-	command.steering_angle = angle
-	print("Steering angle is ", angle)
-
 	# TODO: Make sure the velocity is within bounds [0,100]
-	if not (0 <= vel_input <= 100):
-		print("Out of bounds velocity input", vel_input, "correcting within bounds")
-		vel_input = max(0, min(100, vel_input))
+
+	# An empty AckermannDrive message is created. You will populate the steering_angle and the speed fields.
+	command = AckermannDrive()
+	command.steering_angle = angle
 	command.speed = vel_input
-	print("Velocity is ", vel_input)
 
 	# Move the car autonomously
 	command_pub.publish(command)
 
 	prev_error = error
+
+	print("Steering angle is ", angle)
+	print("Velocity is ", vel_input)
+	print("Error is ", error_raw)
+	print("velocity error is ", vel_error)
 
 if __name__ == '__main__':
 
