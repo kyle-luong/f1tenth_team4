@@ -25,7 +25,7 @@ def getRange(data,angle):
 
 	
 	i = int(math.floor((angle - data.angle_min) / data.angle_increment))
-	print("I: ", i)
+	# print("I: ", i)
 	if angle < data.angle_min or angle > data.angle_max:
 		return float('inf')
 	
@@ -40,21 +40,21 @@ def getRange(data,angle):
 
 def callback(data):
 	global forward_projection
-	print("Data len: ", len(data.ranges))
-	print("Angle min: ", data.angle_min)
-	print("Angle max: ", data.angle_max)
-	print("Increment: ", data.angle_increment)
-	print("Range min: ", data.range_min)
-	print("Range max: ", data.range_max)
+	# print("Data len: ", len(data.ranges))
+	# print("Angle min: ", data.angle_min)
+	# print("Angle max: ", data.angle_max)
+	# print("Increment: ", data.angle_increment)
+	# print("Range min: ", data.range_min)
+	# print("Range max: ", data.range_max)
 	theta = -25 # you need to try different values for theta
-	print(math.radians(theta))
+	# print(math.radians(theta))
 
 	a = getRange(data, math.radians(theta)) # obtain the ray distance for theta
 	front = getRange(data, 0)
 	b = getRange(data, math.radians(-90))	# obtain the ray distance for 0 degrees (i.e. directly to the right of the car)
 	
-	print("Distance side: ", b)
-	print("Distance in front: ", front)
+	# print("Distance side: ", b)
+	# print("Distance in front: ", front)
 	swing = math.radians(theta + 90)
 
 	## Your code goes here to determine the projected error as per the alrorithm
@@ -63,16 +63,16 @@ def callback(data):
 
 
 	alpha = math.atan((a * math.cos(swing) - b) / (a * math.sin(swing)))
-	print("alpha: ", math.degrees(alpha))
+	# print("alpha: ", math.degrees(alpha))
 	ab = b * math.cos(alpha)
-	print("Ab: ", ab)
+	# print("Ab: ", ab)
 	cd = ab + forward_projection * math.sin(alpha)
-	print("Cd: ", cd)
+	# print("Cd: ", cd)
 	error = desired_distance - cd
-	print("Error: ", error)
+	# print("Error: ", error)
 	# print("desired distance: ", desired_distance)
 	if(math.isnan(error)):
-		error = -10
+		error = -3
 
 	msg = pid_input()	# An empty msg is created of the type pid_input
 	# this is the error that you want to send to the PID for steering correction.
@@ -84,7 +84,7 @@ def callback(data):
 
 
 if __name__ == '__main__':
-	print("Hokuyo LIDAR node started")
+	# print("Hokuyo LIDAR node started")
 	rospy.init_node('dist_finder',anonymous = True)
 	# TODO: Make sure you are subscribing to the correct car_x/scan topic on your racecar
 	rospy.Subscriber("/car_4/scan",LaserScan,callback)

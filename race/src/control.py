@@ -72,7 +72,7 @@ def control(data):
 		vel_error = max_error
 	
 	vel_input = vel_max - (vel_max - vel_min) * (vel_error)
-	print('vel error: ',  vel_error)
+	# print('vel error: ',  vel_error)
 
 	# clamp velocity from vel_min to vel_max
 	if vel_input > vel_max:
@@ -94,10 +94,10 @@ def control(data):
 
 	prev_error = error
 
-	print("Steering angle is ", angle)
-	print("Velocity is ", vel_input)
-	print("Error is ", error_raw)
-	print("velocity error is ", vel_error)
+	# print("Steering angle is ", angle)
+	# print("Velocity is ", vel_input)
+	# print("Error is ", error_raw)
+	# print("velocity error is ", vel_error)
 
 if __name__ == '__main__':
 
