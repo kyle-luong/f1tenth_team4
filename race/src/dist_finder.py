@@ -77,7 +77,9 @@ def callback(data):
 	msg = pid_input()	# An empty msg is created of the type pid_input
 	# this is the error that you want to send to the PID for steering correction.
 	msg.pid_error = error
-	msg.pid_vel = vel		# velocity error can also be sent.
+	if math.isnan(front):
+		front = 10
+	msg.pid_vel = front		# velocity error can also be sent.
 	pub.publish(msg)
 
 

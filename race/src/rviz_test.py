@@ -4,22 +4,56 @@ import rospy
 import math
 from sensor_msgs.msg import LaserScan
 from std_msgs.msg import String
-from std_msgs.msg import Int32
+from ackermann_msgs.msg import AckermannDrive
+
+from std_msgs.msg import Int32, Header
 
 from visualization_msgs.msg import Marker
 
+
+from geometry_msgs.msg import PolygonStamped, Point32
+
 from tf.transformations import quaternion_from_euler
 
-sphere_marker_pub = rospy.Publisher("/sphere_marker", Marker, queue_size = 2)
-arrow_marker_pub = rospy.Publisher("/arrow_marker", Marker, queue_size = 2)
-prev_range = 0.0
+sphere_marker_pub = rospy.Publisher("/sphere_marker", Marker, queue_size = 20)
+arrow_marker_pub = rospy.Publisher("/arrow_marker", Marker, queue_size = 20)
+car_marker_pub = rospy.Publisher("/car_polygon", PolygonStamped, queue_size = 20)
 
+prev_range = 0.0
+steering_angle = -0.0
+
+
+def getRange(data,angle):
+	# data: single message from topic /scan
+    # angle: between -30 to 210 degrees, where    0 degrees is directly to the right, and 90 degrees is directly in front
+    # Outputs length in meters to object with angle in lidar scan field of view
+    # Make sure to take care of NaNs etc.
+    #TODO: implement
+
+	
+	i = int(math.floor((angle - data.angle_min) / data.angle_increment))
+	print("I: ", i)
+	if angle < data.angle_min or angle > data.angle_max:
+		return float('inf')
+	
+	if i < 0 or i >= len(data.ranges):
+		return float('inf')
+
+	dataPoint = data.ranges[i]
+	if dataPoint < data.range_min or dataPoint > data.range_max:
+		return float('inf')
+	
+	return dataPoint
+
+def steering_callback(data):
+    global steering_angle
+    steering_angle = data.steering_angle 
 
 def callback(data):
     
     global prev_range
     # pick out the middle range value (at index 540 - just an example)
-    center = data.ranges[540]
+    center = getRange(data, 0)
 
     # If NaN, pipe though the previous non NaN value
     if math.isnan(center):
@@ -34,7 +68,7 @@ def callback(data):
 
     sphere_marker = Marker()
 
-    sphere_marker.header.frame_id = "car_9_laser"
+    sphere_marker.header.frame_id = "car_4_laser"
     sphere_marker.header.stamp = rospy.Time.now()
 
     # set shape, Arrow: 0; Cube: 1 ; Sphere: 2 ; Cylinder: 3
@@ -69,22 +103,49 @@ def callback(data):
     #sphere_marker.pose.orientation.z = quaternion[2]
     #sphere_marker.pose.orientation.w = quaternion[3]
 
-    sphere_marker_pub.publish(sphere_marker)
+    sphere_marker_pub.publish(sphere_marker) 
+
+    car_poly = PolygonStamped()
+    car_poly.header = Header()
+    car_poly.header.stamp = rospy.Time.now()
+    car_poly.header.frame_id = "car_4_laser"
+
+    width = 0.8
+    height = 1
+    p1 = Point32(x = -0.3, y = 0.2, z = 0)
+    p2 = Point32(x = -0.3, y = -0.2, z = 0)
+    p3 = Point32(x = 0.3, y = -0.2, z = 0)
+    p4 = Point32(x = 0.3, y = 0.2, z = 0)
+
+    car_poly.polygon.points.append(p1)
+    car_poly.polygon.points.append(p2)
+    car_poly.polygon.points.append(p3)
+    car_poly.polygon.points.append(p4)
+
+    car_marker_pub.publish(car_poly)
+
+    
 
     # ARROW MARKER
 
     # set shape, Arrow: 0; Cube: 1 ; Sphere: 2 ; Cylinder: 3
     arrow_marker = Marker()
-    arrow_marker.header.frame_id = "car_9_laser"
+    arrow_marker.header.frame_id = "car_4_laser"
     arrow_marker.type = 0
     arrow_marker.header.stamp = rospy.Time.now()
     arrow_marker.id = 1
-
-    arrow_marker.scale.x = data.ranges[540]
+    global steering_angle
+    arrow_marker.scale.x = 1 # data.ranges[540]
     arrow_marker.scale.y = 0.1
     arrow_marker.scale.z = 0.1
 
-    # Set the color
+    quat = quaternion_from_euler(0, 0, math.radians(-steering_angle))
+    arrow_marker.pose.orientation.x = quat[0]
+    arrow_marker.pose.orientation.y = quat[1]
+    arrow_marker.pose.orientation.z = quat[2]
+    arrow_marker.pose.orientation.w = quat[3]
+
+    # Set the colorta
     arrow_marker.color.r = 0.0
     arrow_marker.color.g = 0.0
     arrow_marker.color.b = 1.0
@@ -95,6 +156,8 @@ def callback(data):
    
 if __name__=='__main__':
     rospy.init_node("rviz_test", anonymous=False)   
-    sub = rospy.Subscriber("/car_9/scan",LaserScan, callback)
+    sub = rospy.Subscriber("/car_4/scan",LaserScan, callback)    
+    sub2 = rospy.Subscriber("/car_4/multiplexer/command",AckermannDrive, steering_callback)
+
     rospy.spin()
 

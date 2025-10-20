@@ -16,8 +16,8 @@ max_error = 1.5 # meters
 
 # dynamic velocity constants
 vel_kp = 50
-vel_min = 20
-vel_max = 30
+vel_min = 15
+vel_max = 55
 
 # This code can input desired velocity from the user.
 # velocity must be between [0,100] to move forward.
@@ -48,7 +48,7 @@ def control(data):
 
 	error_msg = data.pid_error
 
-	# scale the error to be normalized -1 to 1
+	# scale the error - 0.5 to be normalized -1 to 1
 	error_raw = max(-max_error, min(max_error, error_msg))
 	error = error_raw / max_error
 
@@ -66,12 +66,13 @@ def control(data):
 	angle = -angle
 
 	# dynamic velocity
-	vel_error = abs(error_msg)
+	vel_error = abs(data.pid_vel)
 
 	if vel_error > max_error:
 		vel_error = max_error
 	
-	vel_input = vel_max - (vel_max - vel_min) * vel_error
+	vel_input = vel_min + (vel_max - vel_min) * (vel_error - 0.8)
+	print('vel error: ',  vel_error)
 
 	# clamp velocity from vel_min to vel_max
 	if vel_input > vel_max:
@@ -85,7 +86,8 @@ def control(data):
 	# An empty AckermannDrive message is created. You will populate the steering_angle and the speed fields.
 	command = AckermannDrive()
 	command.steering_angle = angle
-	command.speed = vel_input
+	command.speed = vel_input	
+
 
 	# Move the car autonomously
 	command_pub.publish(command)
