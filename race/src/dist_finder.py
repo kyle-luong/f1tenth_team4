@@ -7,7 +7,7 @@ from race.msg import pid_input
 # Some useful variable declarations.
 angle_range = 240	# Hokuyo 4LX has 240 degrees FoV for scan
 forward_projection = 2	# distance (in m) that we project the car forward for correcting the error. You have to adjust this.
-desired_distance = 0.65	# distance from the wall (in m). (defaults to right wall). You need to change this for the track
+desired_distance = 0.95	# distance from the wall (in m). (defaults to right wall). You need to change this for the track
 vel = 20 		# this vel variable is not really used here.
 error = 0.0		# initialize the error
 car_length = 0.50 # Traxxas Rally is 20 inches or 0.5 meters. Useful variable.

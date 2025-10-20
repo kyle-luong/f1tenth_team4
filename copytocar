@@ -1,3 +1,5 @@
 #!/bin/bash
 
-scp -r /home/hopper/github/f1tenth-course-labs/race nvidia@192.168.1.1:~/catkin_ws/src
+scp -r /home/hopper/github/f1tenth-course-labs/race/src/control.py  nvidia@192.168.1.1:~/catkin_ws/src/race/src/control.py
+
+scp -r /home/hopper/github/f1tenth-course-labs/race/src/dist_finder.py  nvidia@192.168.1.1:~/catkin_ws/src/race/src/dist_finder.py

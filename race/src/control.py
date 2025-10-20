@@ -7,7 +7,7 @@ from std_msgs.msg import Float32
 
 # PID Control Params
 kp = 100 #TODO
-kd = 85 #TODO
+kd = 100 #TODO
 ki = 0.0 #TODO
 servo_offset = 0.0	# zero correction offset in case servo is misaligned and has a bias in turning.
 prev_error = 0.0
@@ -16,8 +16,8 @@ max_error = 1.5 # meters
 
 # dynamic velocity constants
 vel_kp = 50
-vel_min = 15
-vel_max = 55
+vel_min = 25
+vel_max = 45
 
 # This code can input desired velocity from the user.
 # velocity must be between [0,100] to move forward.
@@ -66,12 +66,12 @@ def control(data):
 	angle = -angle
 
 	# dynamic velocity
-	vel_error = abs(data.pid_vel)
+	vel_error = abs(data.pid_error)
 
 	if vel_error > max_error:
 		vel_error = max_error
 	
-	vel_input = vel_min + (vel_max - vel_min) * (vel_error - 0.8)
+	vel_input = vel_max - (vel_max - vel_min) * (vel_error)
 	print('vel error: ',  vel_error)
 
 	# clamp velocity from vel_min to vel_max
