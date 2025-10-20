@@ -1,0 +1,4 @@
+<launch>
+  <node name="dist_finder" pkg="race" type="dist_finder.py" output="screen"/>
+  <node name="pid_controller" pkg="race" type="control.py" output="screen"/>
+</launch>

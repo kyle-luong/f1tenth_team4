@@ -17,7 +17,7 @@ max_error = 1.5 # meters
 # dynamic velocity constants
 vel_kp = 50
 vel_min = 25
-vel_max = 45
+# vel_max = 45
 
 # This code can input desired velocity from the user.
 # velocity must be between [0,100] to move forward.
@@ -26,7 +26,7 @@ vel_max = 45
 # 25: Slow and steady
 # 35: Nice Autonomous Pace
 # > 40: Careful, what you do here. Only use this if your autonomous steering is very reliable.
-vel_input = 35.0	#TODO
+vel_input = 45.0	#TODO
 
 # Publisher for moving the car.
 # TODO: Use the coorect topic /car_x/offboard/command. The multiplexer listens to this topic
@@ -68,6 +68,7 @@ def control(data):
 	# dynamic velocity
 	vel_error = abs(data.pid_error)
 
+	vel_max = vel_input
 	if vel_error > max_error:
 		vel_error = max_error
 	
@@ -106,10 +107,10 @@ if __name__ == '__main__':
 	global kd
 	global ki
 	global vel_input
-	# kp = input("Enter Kp Value: ")
-	# kd = input("Enter Kd Value: ")
-	# ki = input("Enter Ki Value: ")
-	# vel_input = input("Enter desired velocity: ")
+	kp = input("Enter Kp Value: ")
+	kd = input("Enter Kd Value: ")
+	ki = input("Enter Ki Value: ")
+	vel_input = input("Enter desired velocity: ")
 	rospy.init_node('pid_controller', anonymous=True)
     # subscribe to the error topic
 	rospy.Subscriber("error", pid_input, control)
