@@ -26,7 +26,7 @@ vel_min = 25
 # 25: Slow and steady
 # 35: Nice Autonomous Pace
 # > 40: Careful, what you do here. Only use this if your autonomous steering is very reliable.
-vel_input = 45.0	#TODO
+vel_max = 45.0	#TODO
 
 # Publisher for moving the car.
 # TODO: Use the coorect topic /car_x/offboard/command. The multiplexer listens to this topic
@@ -34,7 +34,7 @@ command_pub = rospy.Publisher('/car_4/multiplexer/command', AckermannDrive, queu
 
 def control(data):
 	global prev_error
-	global vel_input
+	global vel_max
 	global kp
 	global kd
 	global angle
@@ -68,7 +68,6 @@ def control(data):
 	# dynamic velocity
 	vel_error = abs(data.pid_error)
 
-	vel_max = vel_input
 	if vel_error > max_error:
 		vel_error = max_error
 	
@@ -106,11 +105,11 @@ if __name__ == '__main__':
 	global kp
 	global kd
 	global ki
-	global vel_input
+	global vel_max
 	kp = input("Enter Kp Value: ")
 	kd = input("Enter Kd Value: ")
 	ki = input("Enter Ki Value: ")
-	vel_input = input("Enter desired velocity: ")
+	vel_max = input("Enter desired velocity: ")
 	rospy.init_node('pid_controller', anonymous=True)
     # subscribe to the error topic
 	rospy.Subscriber("error", pid_input, control)
