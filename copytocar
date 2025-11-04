@@ -1,6 +1,3 @@
 #!/bin/bash
 
-scp -r /home/hopper/github/f1tenth-course-labs/race/src/control.py  nvidia@192.168.1.1:~/catkin_ws/src/race/src/control.py
-
-scp -r /home/hopper/github/f1tenth-course-labs/race/src/dist_finder.py  nvidia@192.168.1.1:~/catkin_ws/src/race/src/dist_finder.py
-scp -r /home/hopper/github/f1tenth-course-labs/race/launch/wall_following.launch  nvidia@192.168.1.1:~/catkin_ws/src/race/launch/wall_following.launch
+scp -r /home/hopper/github/f1tenth-course-labs/race/src/disparity_extender.py  nvidia@192.168.1.1:~/catkin_ws/src/race/src/disparity_extender.py
