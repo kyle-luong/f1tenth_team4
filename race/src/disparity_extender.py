@@ -31,8 +31,13 @@ def extendDisparities(data, threshold, tolerance):
         r2 = data.ranges[i + 1]
 
         # filter out bad lidar readings, move to next i if met
-        if (r1 < range_min or r1 > range_max or r2 < range_min or r2 > range_max):    
+        if (r1 < range_min or r2 < range_min):    
             continue
+
+        if r2 > range_max:
+            r2 = range_max
+        if r1 > range_max:
+            r1 = range_max
 
         disparity = abs(r1 - r2)
 
