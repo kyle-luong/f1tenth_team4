@@ -23,7 +23,7 @@ class FTGController:
 		self.targets = rospy.Publisher("/target_scan", LaserScan, queue_size = 20)
 	
 	def preprocess_lidar(self, ranges, scan):
-		# Convert to numpy and filter to front view (-90 to +90)
+		# Filter to front view (-90 to +90) only
 		ranges = np.array(ranges)
 		angles = scan.angle_min + np.arange(len(ranges)) * scan.angle_increment
 		angles_deg = np.degrees(angles)
@@ -31,15 +31,9 @@ class FTGController:
 		mask = (angles_deg >= -90) & (angles_deg <= 90)
 		front_ranges = ranges.copy()
 		
-		# Zero out points outside front view
+		# Zero out points outside front view and invalid readings
 		front_ranges[~mask] = 0.0
 		front_ranges[~np.isfinite(front_ranges)] = 0.0
-		
-		# Apply safety bubble around closest point
-		valid = front_ranges[front_ranges > 0]
-		if len(valid) > 0:
-			min_dist = np.min(valid)
-			front_ranges[(front_ranges > 0) & (front_ranges < min_dist + self.bubble_radius)] = 0.0
 		
 		return front_ranges.tolist()
 
@@ -55,7 +49,7 @@ class FTGController:
 		self.visualize(scan_msg, processed_ranges, gap_idx, gap_dist)
 		self.publish_drive(steering_angle, velocity)
 
-	def find_gap(self, ranges, scan):
+	def find_gap(self, ranges):
 		# bc of extender we can greedily pick the furthest point
 		if max(ranges) == 0:
 			return len(ranges)//2, 0.0
@@ -106,7 +100,7 @@ class FTGController:
 		return desired_angle
 
 
-	def calculate_velocity(self, ranges, gap_distance):
+	def calculate_velocity(self, gap_distance):
 		# dynamic velocity
 		# we can do dynamically based off of the gap distance (?)
 		# could also adjust based off of the angle we need to change
