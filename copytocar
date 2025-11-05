@@ -1,3 +1,4 @@
 #!/bin/bash
 
 scp -r /home/hopper/github/f1tenth-course-labs/race/src/disparity_extender.py  nvidia@192.168.1.1:~/catkin_ws/src/race/src/disparity_extender.py
+scp -r /home/hopper/github/f1tenth-course-labs/race/src/ftg_control.py  nvidia@192.168.1.1:~/catkin_ws/src/race/src/ftg_control.py
