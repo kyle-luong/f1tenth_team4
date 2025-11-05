@@ -4,6 +4,7 @@ import rospy
 # from race.msg import pid_input
 from sensor_msgs.msg import LaserScan
 from ackermann_msgs.msg import AckermannDrive
+from visualization_msgs.msg import Marker
 from std_msgs.msg import Float32
 
 class FTGController:
@@ -17,23 +18,53 @@ class FTGController:
 		# TODO uncomment this is only commented for testing purposes
 		self.drive_pub = rospy.Publisher('/car_4/multiplexer/command', AckermannDrive, queue_size = 10)
 		rospy.Subscriber('/disparity_scan', LaserScan, self.scan_callback)
+		self.targetPoint = rospy.Publisher("/sphere_marker", LaserScan, queue_size = 20)
+		self.targets = rospy.Publisher("/target_scan", LaserScan, queue_size = 20)
+
 
 	def scan_callback(self, scan_msg):
 		# scan and publish drive cmd
-		# not too sure rn
+		# not too sure rnscan_msg
 		ranges = scan_msg.ranges
-		gap_idx, gap_dist = self.find_gap(ranges)
-		steering_angle = self.calculate_steering(ranges, gap_idx)
+		gap_idx, gap_dist, updated_ranges = self.find_gap(ranges, scan_msg)
+
+		# make new LaserScan msg with extended disparities   
+		new_scan = LaserScan()
+		new_scan.header = scan_msg.header
+		new_scan.angle_min = scan_msg.angle_min
+		new_scan.angle_max = scan_msg.angle_max
+		new_scan.angle_increment = scan_msg.angle_increment
+		new_scan.time_increment = scan_msg.time_increment
+		new_scan.scan_time = scan_msg.scan_time
+		new_scan.range_min = scan_msg.range_min
+		new_scan.range_max = scan_msg.range_max
+		new_scan.ranges = updated_ranges
+		new_scan.intensities = scan_msg.intensities
+
+		self.targetPoint.publish(new_scan)
+		steering_angle = self.calculate_steering(ranges, gap_idx, scan_msg)
 		velocity = self.calculate_velocity(ranges, gap_dist)
 		self.publish_drive(steering_angle, velocity)
 
-	def find_gap(self, ranges):
+	def find_gap(self, ranges, scan):
 		updated_ranges = []
-		for range in ranges:
-			if math.isinf(range) or math.isnan(range):
+		angleMin = scan.angle_min
+		angleMax = scan.angle_max
+		gapStart = -90 * math.pi / 180
+		gapEnd = 90 * math.pi / 180
+		indexStart = int(math.floor((gapStart - angleMin) / (angleMax - angleMin) * (len(ranges))))
+		indexEnd = int(math.floor((gapEnd - angleMin) / (angleMax - angleMin) * len(ranges)))
+
+		for i in range(0, indexStart):
+			updated_ranges.append(0)
+		for i in range(indexStart, indexEnd):
+			r = ranges[i]
+			if math.isinf(r) or math.isnan(r):
 				updated_ranges.append(0.0)
 			else:
-				updated_ranges.append(range)
+				updated_ranges.append(r)
+		for i in range(indexEnd, len(ranges)):
+			updated_ranges.append(0)
 
 		# naive approach
 		# curr_run = 0
@@ -55,11 +86,14 @@ class FTGController:
 		# return gap_index, gap_distance
 
 		# since we have disparity extender we can greedily pick the furthest point
-		return updated_ranges.index(max(updated_ranges)), max(updated_ranges)
+		return updated_ranges.index(max(updated_ranges)), max(updated_ranges), updated_ranges
 
-	def calculate_steering(self, ranges, gap_idx):
+	def calculate_steering(self, ranges, gap_idx, scan):
 		# TODO get steering angle from target
 		size = len(ranges)
+
+		# angle = gap_idx / len(ranges) * (scan.angle_max - scan.angle_min) + scan.angle_min
+		# angle *= 180 / math.pi 
 
 		#assume positive is turning right and negative means turning left
 		delta = gap_idx - size/2.0 
