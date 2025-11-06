@@ -11,10 +11,13 @@ from std_msgs.msg import Float32
 
 class FTGController:
 	def __init__(self):
-		self.min_vel = 15.0
-		self.max_vel = 25.0
-		self.steering_gain = 1
-		self.min_gap_threshold = 0.5
+		self.min_vel = 10.0
+		self.max_vel = 20.0
+		self.steering_gain = 2
+		# self.min_gap_threshold = 0.5
+		self.angle_min = 0
+		self.angle_max = 0
+		self.angle_increment = 0
 
 
 		self.drive_pub = rospy.Publisher('/car_4/multiplexer/command', AckermannDrive, queue_size = 10)
@@ -27,6 +30,10 @@ class FTGController:
 		ranges = np.array(ranges)
 		angles = scan.angle_min + np.arange(len(ranges)) * scan.angle_increment
 		angles_deg = np.degrees(angles)
+
+		self.angle_increment = scan.angle_increment
+		self.angle_min = scan.angle_min
+		self.angle_max = scan.angle_max
 		
 		mask = (angles_deg >= -90) & (angles_deg <= 90)
 		front_ranges = ranges.copy()
@@ -34,12 +41,6 @@ class FTGController:
 		# Zero out points outside front view
 		front_ranges[~mask] = 0.0
 		front_ranges[~np.isfinite(front_ranges)] = 0.0
-		
-		# Apply safety bubble around closest point
-		valid = front_ranges[front_ranges > 0]
-		if len(valid) > 0:
-			min_dist = np.min(valid)
-			front_ranges[(front_ranges > 0) & (front_ranges < min_dist + self.bubble_radius)] = 0.0
 		
 		return front_ranges.tolist()
 
@@ -51,11 +52,11 @@ class FTGController:
 
 		steering_angle = self.calculate_steering(gap_idx, len(processed_ranges))
 		velocity = self.calculate_velocity(gap_dist)
-		# cornering_steering_angle = self.cornering(ranges, steering_angle,scan_msg.angle_min, scan_msg.angle_increment)
+		# cornering_steering_angle = self.cornering(processed_ranges, steering_angle,scan_msg.angle_min, scan_msg.angle_increment)
 		self.visualize(scan_msg, processed_ranges, gap_idx, gap_dist)
 		self.publish_drive(steering_angle, velocity)
 
-	def find_gap(self, ranges, scan):
+	def find_gap(self, ranges):
 		# bc of extender we can greedily pick the furthest point
 		if max(ranges) == 0:
 			return len(ranges)//2, 0.0
@@ -71,13 +72,17 @@ class FTGController:
 		# angle *= 180 / math.pi 
 		# angle = math.degrees(gap_idx / float(len(ranges)) * (scan.angle_max - scan.angle_min) + scan.angle_min)
 
-		delta = gap_idx - size/2.0 
-		angle = delta/(size/2.0) * 90
+		# delta = gap_idx - size/2.0 
+		# angle = delta/(size/2.0) * 90
 
-		angle *= -1
-		angle = max(-100, min(100, angle))
+		# angle *= -1
+		# angle = max(-100, min(100, angle))
+		# print('steering angle', angle)
 
-		return angle	
+		angle = self.angle_min + gap_idx * self.angle_increment
+		print("steering angle:", angle)
+
+		return -1 * self.steering_gain * math.degrees(angle)
 
 	def cornering(self, ranges, desired_angle, angle_min, angle_increment):
 
@@ -106,7 +111,7 @@ class FTGController:
 		return desired_angle
 
 
-	def calculate_velocity(self, ranges, gap_distance):
+	def calculate_velocity(self, gap_distance):
 		# dynamic velocity
 		# we can do dynamically based off of the gap distance (?)
 		# could also adjust based off of the angle we need to change
@@ -123,6 +128,7 @@ class FTGController:
 		# else, scale based on the distance
 		velocity = gap_distance/3.0 * self.max_vel
 		velocity = max(self.min_vel, min(self.max_vel, velocity))
+		print("velocity", velocity)
 
 		return velocity
 
@@ -155,9 +161,10 @@ class FTGController:
 		arrow_marker.header.stamp = rospy.Time.now()
 		arrow_marker.id = 1
 
-		angle = gap_idx / float(len(scan_msg.ranges)) * (scan_msg.angle_max - scan_msg.angle_min) + scan_msg.angle_min
-		quat = quaternion_from_euler(angle, angle, angle)
-		arrow_marker.pose.position.x = gap_dist
+		angle = scan_msg.angle_min + gap_idx * scan_msg.angle_increment
+		quat = quaternion_from_euler(0, 0, angle)
+		arrow_marker.pose.position.x = gap_dist * math.cos(angle)
+		arrow_marker.pose.position.y = gap_dist * math.sin(angle)
 		arrow_marker.scale.x = 0.2
 		arrow_marker.scale.y = 0.2
 		arrow_marker.scale.z = 0.2

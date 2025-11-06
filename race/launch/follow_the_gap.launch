@@ -1,0 +1,4 @@
+<launch>
+  <node name="disparity_extender" pkg="race" type="disparity_extender.py" output="screen"/>
+  <node name="ftg_controller" pkg="race" type="ftg_control.py" output="screen"/>
+</launch>

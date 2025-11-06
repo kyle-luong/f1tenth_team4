@@ -4,7 +4,7 @@ import math
 from sensor_msgs.msg import LaserScan
 
 car_length = 0.50 # meters
-car_width = 0.39 # meters
+car_width = 0.4 # meters
 
 pub = rospy.Publisher('disparity_scan', LaserScan, queue_size=10)
 
@@ -95,7 +95,7 @@ def extendDisparities(data, threshold, tolerance):
 
 
 def callback(data):
-    disparity_scan = extendDisparities(data, 0.3, 0.025)
+    disparity_scan = extendDisparities(data, 0.15, 0.025)
     pub.publish(disparity_scan)
 
 
