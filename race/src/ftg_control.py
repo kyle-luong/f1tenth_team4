@@ -13,9 +13,9 @@ from std_msgs.msg import Float32
 class FTGController:
 	def __init__(self):
 		self.min_vel = 10.0
-		self.max_vel = 20.0
-		self.steering_gain = 2
-		# self.min_gap_threshold = 0.5
+		self.max_vel = 30.0
+		self.steering_gain = 3
+		self.min_gap_threshold = 2
 		self.angle_min = 0
 		self.angle_max = 0
 		self.angle_increment = 0
@@ -128,14 +128,15 @@ class FTGController:
 
 		angle = self.angle_min + gap_idx * self.angle_increment
 		raw_steer = -1 * self.steering_gain * math.degrees(angle)
+		return raw_steer
 
 		print("steering angle:", angle)
 
         # for smooth steering
-		alpha = float(self.steering_alpha)
-		smoothed = alpha * self.prev_steering + (1.0 - alpha) * raw_steer
-		self.prev_steering = smoothed
-		return smoothed
+		# alpha = float(self.steering_alpha)
+		# smoothed = alpha * self.prev_steering + (1.0 - alpha) * raw_steer
+		# self.prev_steering = smoothed
+		# return smoothed
 
 	def cornering(self, ranges, desired_angle, angle_min, angle_increment):
 

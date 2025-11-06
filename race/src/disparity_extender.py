@@ -95,7 +95,7 @@ def extendDisparities(data, threshold, tolerance):
 
 
 def callback(data):
-    disparity_scan = extendDisparities(data, 0.15, 0.025)
+    disparity_scan = extendDisparities(data, 0.15, 0.1)
     pub.publish(disparity_scan)
 
 
