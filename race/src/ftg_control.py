@@ -26,7 +26,7 @@ class FTGController:
 		self.targets = rospy.Publisher("/target_scan", LaserScan, queue_size = 20)
 	
 	def preprocess_lidar(self, ranges, scan):
-		# Convert to numpy and filter to front view (-90 to +90)
+		# Filter to front view (-90 to +90) only
 		ranges = np.array(ranges)
 		angles = scan.angle_min + np.arange(len(ranges)) * scan.angle_increment
 		angles_deg = np.degrees(angles)
@@ -38,7 +38,7 @@ class FTGController:
 		mask = (angles_deg >= -90) & (angles_deg <= 90)
 		front_ranges = ranges.copy()
 		
-		# Zero out points outside front view
+		# Zero out points outside front view and invalid readings
 		front_ranges[~mask] = 0.0
 		front_ranges[~np.isfinite(front_ranges)] = 0.0
 		
