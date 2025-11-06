@@ -15,7 +15,7 @@ from geometry_msgs.msg import PolygonStamped, Point32
 
 from tf.transformations import quaternion_from_euler
 
-sphere_marker_pub = rospy.Publisher("/sphere_marker", Marker, queue_size = 20)
+sphere_marker_pub = rospy.Publisher("/sphere_marker2", Marker, queue_size = 20)
 arrow_marker_pub = rospy.Publisher("/arrow_marker", Marker, queue_size = 20)
 car_marker_pub = rospy.Publisher("/car_polygon", PolygonStamped, queue_size = 20)
 
@@ -108,7 +108,7 @@ def callback(data):
     car_poly = PolygonStamped()
     car_poly.header = Header()
     car_poly.header.stamp = rospy.Time.now()
-    car_poly.header.frame_id = "car_4_laser"
+    car_poly.header.frame_id = "car_4_base_link"
 
     width = 0.8
     height = 1
@@ -130,7 +130,7 @@ def callback(data):
 
     # set shape, Arrow: 0; Cube: 1 ; Sphere: 2 ; Cylinder: 3
     arrow_marker = Marker()
-    arrow_marker.header.frame_id = "car_4_laser"
+    arrow_marker.header.frame_id = "car_4_base_link"
     arrow_marker.type = 0
     arrow_marker.header.stamp = rospy.Time.now()
     arrow_marker.id = 1

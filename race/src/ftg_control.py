@@ -14,7 +14,7 @@ class FTGController:
 	def __init__(self):
 		self.min_vel = 10.0
 		self.max_vel = 30.0
-		self.steering_gain = 3
+		self.steering_gain = 2
 		self.min_gap_threshold = 2
 		self.angle_min = 0
 		self.angle_max = 0
@@ -209,7 +209,7 @@ class FTGController:
 
 		# Publish target marker
 		arrow_marker = Marker()
-		arrow_marker.header.frame_id = "car_4_laser"
+		arrow_marker.header.frame_id = "car_4_base_link"
 		arrow_marker.type = 2
 		arrow_marker.header.stamp = rospy.Time.now()
 		arrow_marker.id = 1

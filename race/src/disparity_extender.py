@@ -4,7 +4,7 @@ import math
 from sensor_msgs.msg import LaserScan
 
 car_length = 0.50 # meters
-car_width = 0.4 # meters
+car_width = 0.60 # meters
 
 pub = rospy.Publisher('disparity_scan', LaserScan, queue_size=10)
 
