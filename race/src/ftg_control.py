@@ -6,7 +6,8 @@ from race.msg import pid_input
 from sensor_msgs.msg import LaserScan
 from tf.transformations import quaternion_from_euler
 from ackermann_msgs.msg import AckermannDrive
-from visualization_msgs.msg import Marker
+from visualization_msgs.msg import Marker, MarkerArray
+from geometry_msgs.msg import PolygonStamped, Point32, Point
 from std_msgs.msg import Float32
 
 class FTGController:
@@ -22,9 +23,16 @@ class FTGController:
 		self.depth_threshold = 3
 
 		self.drive_pub = rospy.Publisher('/car_4/multiplexer/command', AckermannDrive, queue_size = 10)
-		rospy.Subscriber('/disparity_scan', LaserScan, self.scan_callback)
+
 		self.targetPoint = rospy.Publisher("/sphere_marker", Marker, queue_size = 20)
 		self.targets = rospy.Publisher("/target_scan", LaserScan, queue_size = 20)
+		self.footprint_pub = rospy.Publisher('/visualization/flootprint', PolygonStamped, queue_size=20)
+		self.steering_pub = rospy.Publisher('/visualization/steering', Marker, queue_size=20)
+		self.footprint_pub = rospy.Publisher('/visualization/disparities', MarkerArray, queue_size=1)
+
+
+		rospy.Subscriber('/disparity_scan', LaserScan, self.scan_callback)
+
 	
 	def preprocess_lidar(self, ranges, scan):
 		# Filter to front view (-90 to +90) only
@@ -154,8 +162,7 @@ class FTGController:
 				return 0
 		
 		return desired_angle
-
-
+	
 	def calculate_velocity(self, gap_distance):
 		# dynamic velocity
 		# we can do dynamically based off of the gap distance (?)
