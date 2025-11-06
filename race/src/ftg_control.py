@@ -18,7 +18,8 @@ class FTGController:
 		self.angle_min = 0
 		self.angle_max = 0
 		self.angle_increment = 0
-
+		self.steering_alpha = 0.3
+		self.depth_threshold = 3
 
 		self.drive_pub = rospy.Publisher('/car_4/multiplexer/command', AckermannDrive, queue_size = 10)
 		rospy.Subscriber('/disparity_scan', LaserScan, self.scan_callback)
@@ -50,11 +51,49 @@ class FTGController:
 		processed_ranges = self.preprocess_lidar(scan_msg.ranges, scan_msg)
 		gap_idx, gap_dist = self.find_gap(processed_ranges)
 
+		if gap_dist >= self.depth_threshold:
+			start, end = self.find_max_gap(processed_ranges)
+			if end < start:
+				gap_idx, gap_dist = self.find_gap(processed_ranges)
+			else:
+				gap_idx = (start + end) // 2
+				gap_idx = max(0, min(len(processed_ranges)-1, gap_idx))
+				gap_dist = processed_ranges[gap_idx]
+		else:
+			gap_idx, gap_dist = self.find_gap(processed_ranges)
+
 		steering_angle = self.calculate_steering(gap_idx, len(processed_ranges))
 		velocity = self.calculate_velocity(gap_dist)
 		# cornering_steering_angle = self.cornering(processed_ranges, steering_angle,scan_msg.angle_min, scan_msg.angle_increment)
 		self.visualize(scan_msg, processed_ranges, gap_idx, gap_dist)
 		self.publish_drive(steering_angle, velocity)
+
+	# for wiggly problems
+	def find_max_gap(self, ranges):
+		max_run = 0
+		start_idx = 0
+		end_idx = 0
+		current_run = 0
+		current_start = 0
+
+		for i, r in enumerate(ranges):
+			if r > self.min_gap_threshold:
+				if current_run == 0:
+					current_start = i
+				current_run += 1
+			else:
+				if current_run > max_run:
+					max_run = current_run
+					start_idx = current_start
+					end_idx = i - 1
+				current_run = 0
+
+		if current_run > max_run:
+			max_run = current_run
+			start_idx = current_start
+			end_idx = len(ranges) - 1
+
+		return start_idx, end_idx
 
 	def find_gap(self, ranges):
 		# bc of extender we can greedily pick the furthest point
@@ -80,9 +119,15 @@ class FTGController:
 		# print('steering angle', angle)
 
 		angle = self.angle_min + gap_idx * self.angle_increment
+		raw_steer = -1 * self.steering_gain * math.degrees(angle)
+
 		print("steering angle:", angle)
 
-		return -1 * self.steering_gain * math.degrees(angle)
+        # for smooth steering
+		alpha = float(self.steering_alpha)
+		smoothed = alpha * self.prev_steering + (1.0 - alpha) * raw_steer
+		self.prev_steering = smoothed
+		return smoothed
 
 	def cornering(self, ranges, desired_angle, angle_min, angle_increment):
 
