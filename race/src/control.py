@@ -2,8 +2,8 @@
 import math
 import rospy
 from race.msg import pid_input
-from ackermann_msgs.msg import AckermannDrive
-from std_msgs.msg import Float32
+from ackermann_msgs.msg import AckermannDrive, AckermannDriveStamped
+from std_msgs.msg import Float32, Bool
 
 # PID Control Params
 kp = 100 #TODO
@@ -11,6 +11,7 @@ kd = 100 #TODO
 ki = 0.0 #TODO
 servo_offset = 0.0	# zero correction offset in case servo is misaligned and has a bias in turning.
 prev_error = 0.0
+offboard_enabled = False
 
 max_error = 1.5 # meters
 
@@ -30,7 +31,18 @@ vel_max = 45.0	#TODO
 
 # Publisher for moving the car.
 # TODO: Use the coorect topic /car_x/offboard/command. The multiplexer listens to this topic
-command_pub = rospy.Publisher('/car_4/multiplexer/command', AckermannDrive, queue_size = 10)
+command_pub = rospy.Publisher('/car_4/offboard/command', AckermannDrive, queue_size = 10)
+
+# def mode_cb(self, msg):
+# 	offboard_enabled = msg.data
+
+# def joystick_cb(self, msg):
+# 	if not offboard_enabled:
+# 		command_pub.publish(msg)
+
+# def autonomous_cb(self, msg):
+# 	if offboard_enabled:
+# 		command_pub.publish(msg)
 
 def control(data):
 	global prev_error
@@ -113,4 +125,7 @@ if __name__ == '__main__':
 	rospy.init_node('pid_controller', anonymous=True)
     # subscribe to the error topic
 	rospy.Subscriber("error", pid_input, control)
+	# rospy.Subscriber("/offboard_enable", Bool, mode_cb)
+	# rospy.Subscriber("/car_4/autonomous", AckermannDriveStamped, autonomous_cb)
+	# rospy.Subscriber("/car_4/joystick_cmd", AckermannDriveStamped, joystick_cb)
 	rospy.spin()
