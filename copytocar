@@ -1,4 +1,4 @@
 #!/bin/bash
 
+scp -r /home/hopper/github/f1tenth-course-labs/f1tenth_purepursuit  nvidia@192.168.1.1:~/catkin_ws/src/
 scp -r /home/hopper/github/f1tenth-course-labs/race/src/  nvidia@192.168.1.1:~/catkin_ws/src/race/src/
-scp -r /home/hopper/github/f1tenth-course-labs/f1tenth_purepursuit  nvidia@192.168.1.1:~/catkin_ws/src/f1tenth_purepursuit
