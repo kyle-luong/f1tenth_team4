@@ -12,6 +12,9 @@ from geometry_msgs.msg import PolygonStamped
 from geometry_msgs.msg import Point32
 from geometry_msgs.msg import PoseStamped
 import tf
+import rvizrace
+
+from nav_msgs.msg import Path
 
 # Global variables for storing the path, path resolution, frame ID, and car details
 plan                = []
@@ -25,6 +28,10 @@ trajectory_name     = 'raceline'
 # Publishers for sending driving commands and visualizing the control polygon
 command_pub         = rospy.Publisher('/{}/offboard/command'.format(car_name), AckermannDrive, queue_size = 10)
 polygon_pub         = rospy.Publisher('/{}/purepursuit_control/visualize'.format(car_name), PolygonStamped, queue_size = 1)
+raceline_pub = rospy.Publisher("/raceline", Path, queue_size=1)
+
+# visualize refrence path
+path_pub = rospy.Publisher('/{}/purepursuit/path'.format(car_name), Path, queue_size=1)
 
 # Global variables for waypoint sequence and current polygon
 global wp_seq
@@ -136,11 +143,6 @@ def purepursuit_control_node(data):
     
     target_pt = get_target_point()
 
-    # print("DATA: ")
-    # print(data)
-    # print(target_pt)
-    # print(odom)
-
     # TODO 4: Implement the pure pursuit algorithm to compute the steering angle given the pose of the car, target point, and lookahead distance.
     # Your code here
     def calculate_steering():
@@ -174,13 +176,14 @@ def purepursuit_control_node(data):
 
     # TODO 5: Ensure that the calculated steering angle is within the STEERING_RANGE and assign it to command.steering_angle
     # Your code here    
-    command.steering_angle = 2.5 * calculate_steering()
+    angle = 2.5 * calculate_steering()
+    command.steering_angle = angle
     # print("Steering at: ", command.steering_angle)
 
     # TODO 6: Implement Dynamic Velocity Scaling instead of a constant speed
     def calculate_velocity(angle):
         angle = abs(angle)
-        # dynamic velocity code from ftg
+        # dynamic velocity based on steering angle
         min_vel = 30.0
         max_vel = 60.0
 
@@ -188,24 +191,24 @@ def purepursuit_control_node(data):
 
         if angle > angleMax:
             return min_vel
-        # dist = _get_distance(odom, target_pt)
-
-        # if the target is further than 3 meters, drive the max speed
-        # if dist > 3:
-        #     return max_vel
-        #
-        # # if the gap is really close, drive the min velocity
-        # if dist < 0.5:
-        #     return min_vel
-        #
-        # else, scale based on the distance
+        
         velocity = (angleMax - angle) / angleMax * (max_vel - min_vel) + min_vel
-        # velocity = max(min_vel, min(max_vel, velocity))
+
         return velocity
 
-    command.speed = calculate_velocity(command.steering_angle)
+    velocity = calculate_velocity(command.steering_angle)
+    command.speed = velocity
     # command.speed = 30.0
     command_pub.publish(command)
+
+
+    # print("DATA: ")
+    # print(data)
+    # print(target_pt)
+    # print(odom)
+    # print("angle", angle)
+    # print("speed", velocity)
+
 
     # Visualization code
     # Make sure the following variables are properly defined in your TODOs above:
@@ -235,6 +238,22 @@ def purepursuit_control_node(data):
     control_polygon.header.stamp    = rospy.Time.now()
     wp_seq = wp_seq + 1
     polygon_pub.publish(control_polygon)
+    raceline_pub.publish(rvizrace.raceline_path)
+
+def publish_path():
+    path_msg = Path()
+    path_msg.header.frame_id = "map"
+    path_msg.header.stamp = rospy.Time.now()
+
+    for p in plan:
+        pose = PoseStamped()
+        pose.header.frame_id = "map"
+        pose.pose.position.x = p[0]
+        pose.pose.position.y = p[1]
+        pose.pose.orientation.w = 1.0
+        path_msg.poses.append(pose)
+
+    path_pub.publish(path_msg)
 
 if __name__ == '__main__':
 
@@ -244,6 +263,7 @@ if __name__ == '__main__':
         if not plan:
             rospy.loginfo('obtaining trajectory')
             construct_path()
+            publish_path()
             rospy.loginfo('trajectory done!')
 
         # This node subsribes to the pose estimate provided by the Particle Filter. 
