@@ -118,6 +118,7 @@ def purepursuit_control_node(data):
     
 
     # TODO 2: You need to tune the value of the lookahead_distance
+    # this came to me in a dream
     lookahead_distance = 2.0
 
 
