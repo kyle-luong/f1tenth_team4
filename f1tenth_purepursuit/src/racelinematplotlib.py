@@ -198,7 +198,7 @@ if len(x_clicked) > 1:
     
     if smooth_x.size > 0:
         # Save the base raceline
-        write_curve_to_csv("/home/hopper/github/f1tenth-course-labs/f1tenth_purepursuit/racelines/straight_raceline.csv", smooth_x, smooth_y)
+        write_curve_to_csv("/home/hopper/github/f1tenth-course-labs/f1tenth_purepursuit/racelines/test_raceline.csv", smooth_x, smooth_y)
 
         # -----------------------------
         # Generate shifted racelines

@@ -23,10 +23,10 @@ frame_id            = 'map'
 # car_name            = str(sys.argv[1])
 # trajectory_name     = str(sys.argv[2])
 car_name            = 'car_4'
-trajectory_name     = 'straight_raceline'
+trajectory_name     = 'test_raceline'
 
 # Publishers for sending driving commands and visualizing the control polygon
-command_pub         = rospy.Publisher('/{}/offboard/command'.format(car_name), AckermannDrive, queue_size = 10)
+command_pub         = rospy.Publisher('/{}/offboard/command'.format(car_name), AckermannDrive, queue_size = 100)
 polygon_pub         = rospy.Publisher('/{}/purepursuit_control/visualize'.format(car_name), PolygonStamped, queue_size = 1)
 raceline_pub = rospy.Publisher("/raceline", Path, queue_size=1)
 
@@ -117,9 +117,13 @@ def purepursuit_control_node(data):
                                                         data.pose.orientation.w))[2]
     
 
+    lookahead_distance = get_param_or_input("dist", 2.0, float)
+    max_vel = get_param_or_input("max_vel", 60.0, float)
+    # print("look_ahead_distance: ", lookahead_distance, "max:vel: ", max_vel)
+
     # TODO 2: You need to tune the value of the lookahead_distance
     # this came to me in a dream
-    lookahead_distance = 2.0 # 2.0
+    # lookahead_distance = 2.0 # 2.0
 
 
     # TODO 3: Utilizing the base projection found in TODO 1, your next task is to identify the goal or target point for the car.
@@ -168,7 +172,7 @@ def purepursuit_control_node(data):
         carFrameTarget = tf.transformations.quaternion_multiply(conj, carFrameTarget)
         carFrameTarget = tf.transformations.quaternion_multiply(carFrameTarget, orientation)
 
-        print(carFrameTarget[1])
+        # print(carFrameTarget[1])
 
         alpha = math.asin((carFrameTarget[1]) / lookahead_distance)
         # print("Angle: ", math.degrees(alpha))
@@ -187,8 +191,8 @@ def purepursuit_control_node(data):
     def calculate_velocity(angle):
         angle = abs(angle)
         # dynamic velocity based on steering angle
-        min_vel = 30.0 # 30
-        max_vel = 70.0 # 60
+        min_vel = 40.0 # 30
+        # max_vel = 90.0 # 60
 
         angleMax = 50.0
 
@@ -258,7 +262,16 @@ def publish_path():
 
     path_pub.publish(path_msg)
 
+def get_param_or_input(name, default, cast=float):
+    if rospy.has_param("~"+name):
+        return cast(rospy.get_param("~"+name))
+    v = input("{}" [{}].format(name, default)).strip()
+    return cast(v) if v else default
+
 if __name__ == '__main__':
+
+    global lookahead_distance
+    global max_vel
 
     try:
 
