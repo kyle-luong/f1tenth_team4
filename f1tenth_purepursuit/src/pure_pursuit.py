@@ -117,8 +117,10 @@ def purepursuit_control_node(data):
                                                         data.pose.orientation.w))[2]
     
 
-    lookahead_distance = get_param_or_input("dist", 2.0, float)
+    k = local_curvature(min_idx)
     max_vel = get_param_or_input("max_vel", 60.0, float)
+    lookahead_distance = adaptive_lookahead(2.0, max_vel, k)
+    print(lookahead_distance, "<- ld")
     # print("look_ahead_distance: ", lookahead_distance, "max:vel: ", max_vel)
 
     # TODO 2: You need to tune the value of the lookahead_distance
@@ -183,7 +185,7 @@ def purepursuit_control_node(data):
 
     # TODO 5: Ensure that the calculated steering angle is within the STEERING_RANGE and assign it to command.steering_angle
     # Your code here    
-    angle = 4 * calculate_steering() # usually 2.5
+    angle = 5 * calculate_steering() # usually 2.5
     command.steering_angle = angle
     # print("Steering at: ", command.steering_angle)
 
@@ -191,10 +193,10 @@ def purepursuit_control_node(data):
     def calculate_velocity(angle):
         angle = abs(angle)
         # dynamic velocity based on steering angle
-        min_vel = 40.0 # 30
+        min_vel = 26.5 # 30
         # max_vel = 90.0 # 60
 
-        angleMax = 50.0
+        angleMax = 39.0
 
         if angle > angleMax:
             return min_vel
@@ -267,6 +269,30 @@ def get_param_or_input(name, default, cast=float):
         return cast(rospy.get_param("~"+name))
     v = input("{}" [{}].format(name, default)).strip()
     return cast(v) if v else default
+
+def local_curvature(i):
+    i0 = max(0, i-1)
+    i1 = i
+    i2 = min(len(plan) - 1, i + 1)
+    p0 = np.array(plan[i0]); p1 = np.array(plan[i1]); p2 = np.array(plan[i2])
+    a = np.linalg.norm(p1 - p0)
+    b = np.linalg.norm(p2 - p1)
+    c = np.linalg.norm(p2 - p0)
+    s = 0.5 * (a + b + c)
+    area = math.sqrt(max(0.0, s * (s - a) * (s - b) * (s - c)))
+    if area < 1e-9 or a < 1e-9 or b < 1e-9 or c < 1e-9:
+        return 0.0
+    
+    R = (a * b * c) / (4.0 * area)
+    return 0.0 if math.isinf(R) or math.isnan(R) or R < 1e-6 else 1.0/R
+
+def adaptive_lookahead(L0, v, k):
+    min_ld = 0.75
+    max_ld = 2.5
+    k_v = 0.02
+    k_k = 0.6
+    L = L0 * (1.0 * k_v * max(0.0, v) / (1.0 + k_k * max(0.0, k)))
+    return max(min_ld, min(max_ld, L))
 
 if __name__ == '__main__':
 
