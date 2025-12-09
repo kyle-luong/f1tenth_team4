@@ -23,7 +23,7 @@ frame_id            = 'map'
 # car_name            = str(sys.argv[1])
 # trajectory_name     = str(sys.argv[2])
 car_name            = 'car_4'
-trajectory_name     = 'raceline'
+trajectory_name     = 'straight_raceline'
 
 # Publishers for sending driving commands and visualizing the control polygon
 command_pub         = rospy.Publisher('/{}/offboard/command'.format(car_name), AckermannDrive, queue_size = 10)
@@ -49,7 +49,7 @@ def _get_distance(point1, point2):
 def construct_path():
     # Function to construct the path from a CSV file
     # TODO: Modify this path to match the folder where the csv file containing the path is located.
-    file_path = os.path.expanduser('~/catkin_ws/src/f1tenth_purepursuit/path/{}.csv'.format(trajectory_name))
+    file_path = os.path.expanduser('~/catkin_ws/src/f1tenth_purepursuit/racelines/{}.csv'.format(trajectory_name))
     with open(file_path) as csv_file:
         csv_reader = csv.reader(csv_file, delimiter = ',')
         for waypoint in csv_reader:
@@ -119,7 +119,7 @@ def purepursuit_control_node(data):
 
     # TODO 2: You need to tune the value of the lookahead_distance
     # this came to me in a dream
-    lookahead_distance = 2.0
+    lookahead_distance = 2.0 # 2.0
 
 
     # TODO 3: Utilizing the base projection found in TODO 1, your next task is to identify the goal or target point for the car.
@@ -168,6 +168,8 @@ def purepursuit_control_node(data):
         carFrameTarget = tf.transformations.quaternion_multiply(conj, carFrameTarget)
         carFrameTarget = tf.transformations.quaternion_multiply(carFrameTarget, orientation)
 
+        print(carFrameTarget[1])
+
         alpha = math.asin((carFrameTarget[1]) / lookahead_distance)
         # print("Angle: ", math.degrees(alpha))
         steering_angle = math.atan(2 * WHEELBASE_LEN * math.sin(alpha) / lookahead_distance)
@@ -177,7 +179,7 @@ def purepursuit_control_node(data):
 
     # TODO 5: Ensure that the calculated steering angle is within the STEERING_RANGE and assign it to command.steering_angle
     # Your code here    
-    angle = 2.5 * calculate_steering()
+    angle = 4 * calculate_steering() # usually 2.5
     command.steering_angle = angle
     # print("Steering at: ", command.steering_angle)
 
@@ -185,8 +187,8 @@ def purepursuit_control_node(data):
     def calculate_velocity(angle):
         angle = abs(angle)
         # dynamic velocity based on steering angle
-        min_vel = 30.0
-        max_vel = 60.0
+        min_vel = 30.0 # 30
+        max_vel = 70.0 # 60
 
         angleMax = 50.0
 
