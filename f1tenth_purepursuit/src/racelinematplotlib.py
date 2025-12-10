@@ -105,7 +105,7 @@ map_array = np.array(map_image)
 
 
 # Map metadata from the YAML file
-origin_x, origin_y = -10.133160, -5.060558  # Origin of the map
+origin_x, origin_y = -5.302997, -3.396586  # Origin of the map
 resolution = 0.050000  # Resolution of the map
 
 # Function to convert image coordinates to map coordinates

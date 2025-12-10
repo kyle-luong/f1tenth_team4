@@ -185,7 +185,7 @@ def purepursuit_control_node(data):
 
     # TODO 5: Ensure that the calculated steering angle is within the STEERING_RANGE and assign it to command.steering_angle
     # Your code here    
-    angle = 5 * calculate_steering() # usually 2.5
+    angle = 5.25 * calculate_steering() # usually 2.5
     command.steering_angle = angle
     # print("Steering at: ", command.steering_angle)
 
