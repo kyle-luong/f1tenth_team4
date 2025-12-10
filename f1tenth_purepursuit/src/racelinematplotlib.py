@@ -136,18 +136,34 @@ def save_race_line(filename='race_line.csv'):
     print(f"Race line saved to {filename}.")
 
 # Function to generate Bezier curve or spline interpolation between clicked points
-def generate_smooth_curve(x_points, y_points):
-    # Use cubic spline interpolation for smooth curves
-    if len(x_points) < 4:
-        return np.array([]), np.array([])  # We need at least 4 points for smooth interpolation
+import numpy as np
+from scipy.interpolate import CubicSpline
 
-    cs_x = CubicSpline(range(len(x_points)), x_points)
-    cs_y = CubicSpline(range(len(y_points)), y_points)
-    
-    fine_range = np.linspace(0, len(x_points) - 1, 100)
-    smooth_x = cs_x(fine_range)
-    smooth_y = cs_y(fine_range)
-    
+def generate_smooth_curve(x_points, y_points, num_points=300):
+    if len(x_points) < 4:
+        return np.array([]), np.array([])
+
+    x_points = np.array(x_points)
+    y_points = np.array(y_points)
+
+    # close loop by adding first point again
+    x_points = np.append(x_points, x_points[0])
+    y_points = np.append(y_points, y_points[0])
+
+    dx = np.diff(x_points)
+    dy = np.diff(y_points)
+    ds = np.sqrt(dx*dx + dy*dy)
+
+    s = np.concatenate(([0], np.cumsum(ds)))
+
+    # PERIODIC spline removes the gap entirely
+    spline_x = CubicSpline(s, x_points, bc_type='periodic')
+    spline_y = CubicSpline(s, y_points, bc_type='periodic')
+
+    s_fine = np.linspace(0, s[-1], num_points)
+    smooth_x = spline_x(s_fine)
+    smooth_y = spline_y(s_fine)
+
     return smooth_x, smooth_y
 
 # -----------------------------
