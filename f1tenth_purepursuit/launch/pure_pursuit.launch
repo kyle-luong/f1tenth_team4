@@ -4,6 +4,7 @@
     <arg name = "dist" default = "2.0"/>
     <arg name = "wheelbase" default = "0.325"/>
     <arg name = "max_vel" default = "60.0"/>
+    <arg name = "min_vel" default = "33.5"/>
     <include file="$(find particle_filter)/launch/slam.launch" />    
     <include file="$(find move_base)/launch/move_base.launch" >
         <arg name="listen_offboard" value="true" />
@@ -14,6 +15,7 @@
         <param name = "trajectory_name" value = "$(arg trajectory_name)"/>
         <param name = "dist" value = "$(arg dist)"/>
         <param name = "max_vel" value = "$(arg max_vel)"/>
+        <param name = "min_vel" value = "$(arg min_vel)"/>
         <param name = "wheelbase" value = "$(arg wheelbase)"/>
     </node>
 </launch>

@@ -212,10 +212,10 @@ if len(x_clicked) > 1:
         #     "raceline_4.csv":  2 * offset_distance,
         # }
 
-        # # Plot all racelines
-        # fig, ax = plt.subplots()
-        # ax.imshow(map_array, cmap='gray')
-        # ax.plot(smooth_x, smooth_y, 'b-', label='Base Smooth Path')
+        # Plot all racelines
+        fig, ax = plt.subplots()
+        ax.imshow(map_array, cmap='gray')
+        ax.plot(smooth_x, smooth_y, 'b-', label='Base Smooth Path')
 
         # for name, off in offsets.items():
         #     xo, yo = compute_offset_curve(smooth_x, smooth_y, off)

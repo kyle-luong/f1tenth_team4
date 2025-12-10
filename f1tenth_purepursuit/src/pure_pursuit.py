@@ -119,8 +119,7 @@ def purepursuit_control_node(data):
 
     k = local_curvature(min_idx)
     max_vel = get_param_or_input("max_vel", 60.0, float)
-    lookahead_distance = adaptive_lookahead(2.0, max_vel, k)
-    print(lookahead_distance, "<- ld")
+    min_vel = get_param_or_input("min_vel", 33.5, float )
     # print("look_ahead_distance: ", lookahead_distance, "max:vel: ", max_vel)
 
     # TODO 2: You need to tune the value of the lookahead_distance
@@ -133,6 +132,9 @@ def purepursuit_control_node(data):
     # The target point is a specific point on the reference path that the car should aim towards - lookahead distance ahead of the base projection on the reference path.
     # Calculate the position of this goal/target point along the path.
 
+    velocity = calculate_velocity(command.steering_angle)
+    lookahead_distance = adaptive_lookahead(velocity)
+    
     # Your code here
     def get_target_point():
         idx = min_idx
@@ -185,7 +187,7 @@ def purepursuit_control_node(data):
 
     # TODO 5: Ensure that the calculated steering angle is within the STEERING_RANGE and assign it to command.steering_angle
     # Your code here    
-    angle = 5.25 * calculate_steering() # usually 2.5
+    angle = 5 * calculate_steering() # usually 2.5
     command.steering_angle = angle
     # print("Steering at: ", command.steering_angle)
 
@@ -193,10 +195,8 @@ def purepursuit_control_node(data):
     def calculate_velocity(angle):
         angle = abs(angle)
         # dynamic velocity based on steering angle
-        min_vel = 26.5 # 30
-        # max_vel = 90.0 # 60
 
-        angleMax = 39.0
+        angleMax = 40.0
 
         if angle > angleMax:
             return min_vel
@@ -205,7 +205,13 @@ def purepursuit_control_node(data):
 
         return velocity
 
-    velocity = calculate_velocity(command.steering_angle)
+    def adaptive_lookahead(v):
+        p = (v - min_vel)/(max_vel - min_vel)
+        l_max = 2
+        l_min = 0.75
+        return (l_max - l_min) * p + l_min
+    
+    print("ld: ", lookahead_distance, "max_vel: ", max_vel, "min_vel: ", min_vel)
     command.speed = velocity
     # command.speed = 30.0
     command_pub.publish(command)
@@ -286,18 +292,12 @@ def local_curvature(i):
     R = (a * b * c) / (4.0 * area)
     return 0.0 if math.isinf(R) or math.isnan(R) or R < 1e-6 else 1.0/R
 
-def adaptive_lookahead(L0, v, k):
-    min_ld = 0.75
-    max_ld = 2.5
-    k_v = 0.02
-    k_k = 0.6
-    L = L0 * (1.0 * k_v * max(0.0, v) / (1.0 + k_k * max(0.0, k)))
-    return max(min_ld, min(max_ld, L))
 
 if __name__ == '__main__':
 
     global lookahead_distance
     global max_vel
+    global min_vel
 
     try:
 
