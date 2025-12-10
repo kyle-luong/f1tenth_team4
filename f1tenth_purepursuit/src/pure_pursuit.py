@@ -12,6 +12,8 @@ import rvizrace
 from ackermann_msgs.msg import AckermannDrive
 from geometry_msgs.msg import PolygonStamped, Point32, PoseStamped
 from nav_msgs.msg import Path
+from visualization_msgs.msg import Marker
+from tf.transformations import quaternion_from_euler
 
 plan = []
 path_resolution = []
@@ -24,6 +26,7 @@ command_pub = rospy.Publisher("/%s/offboard/command" % car_name, AckermannDrive,
 polygon_pub = rospy.Publisher("/%s/purepursuit_control/visualize" % car_name, PolygonStamped, queue_size=1)
 raceline_pub = rospy.Publisher("/raceline", Path, queue_size=1)
 path_pub = rospy.Publisher("/%s/purepursuit/path" % car_name, Path, queue_size=1)
+arrow_marker_pub = rospy.Publisher("/arrow_marker", Marker, queue_size = 20)
 
 wp_seq = 0
 control_polygon = PolygonStamped()
@@ -85,13 +88,13 @@ def get_param_or_input(name, default, cast=float):
             return default
 
     try:
-        v = raw_input("%s [%s]: " % (name, default)).strip()
+        v = input("%s [%s]: " % (name, default)).strip()
         return cast(v) if v else default
     except Exception:
         return default
 
 
-def local_curvature(i):
+# def local_curvature(i):
     i0 = max(0, i - 1)
     i1 = i
     i2 = min(len(plan) - 1, i + 1)
@@ -152,15 +155,17 @@ def purepursuit_control_node(data):
     )
     heading = tf.transformations.euler_from_quaternion(orientation_quat)[2]
 
-    k = local_curvature(min_idx)
+    # k = local_curvature(min_idx)
 
     max_vel = get_param_or_input("max_vel", 60.0, float)
-    min_vel = get_param_or_input("min_vel", 33.5, float)
+    min_vel = get_param_or_input("min_vel", 30.0, float)
 
     # speed based on steering
     def calculate_velocity(angle):
         a = abs(angle)
         angle_max = 40.0
+        if a < 7.77:
+            return max_vel
         if a > angle_max:
             return min_vel
         return (angle_max - a) / angle_max * (max_vel - min_vel) + min_vel
@@ -171,7 +176,11 @@ def purepursuit_control_node(data):
             p = (v - min_vel) / (max_vel - min_vel)
         else:
             p = 0.0
-        return 0.75 + (2.0 - 0.75) * p
+        min_lookahead = 0.2
+        max_lookahead = 3
+        lookahead = min_lookahead + (max_lookahead - min_lookahead) * p
+
+        return lookahead
 
     velocity = calculate_velocity(command.steering_angle)
     lookahead_distance = adaptive_lookahead(velocity)
@@ -200,17 +209,25 @@ def purepursuit_control_node(data):
 
         alpha = math.asin(car_frame[1] / lookahead_distance)
         steer = math.atan(2 * WHEELBASE_LEN * math.sin(alpha) / lookahead_distance)
-        return math.degrees(steer)
+        angle = math.degrees(steer)
+        
+        return angle
 
+    s_angle = calculate_steering()
     angle = 5 * calculate_steering()
     angle = max(-STEERING_RANGE, min(STEERING_RANGE, angle))
 
     command.steering_angle = angle
+
+    velocity = calculate_velocity(command.steering_angle)
+    lookahead_distance = adaptive_lookahead(velocity)
+
     command.speed = velocity
 
-    rospy.loginfo_throttle(1.0,
-        "ld=%.2f v=%.2f angle=%.2f k=%.3f" %
-        (lookahead_distance, command.speed, command.steering_angle, k)
+
+    rospy.loginfo_throttle(0.1,
+        "ld=%.2f v=%.2f angle=%.2f" %
+        (lookahead_distance, command.speed, command.steering_angle)
     )
 
     command_pub.publish(command)
@@ -229,6 +246,36 @@ def purepursuit_control_node(data):
 
     polygon_pub.publish(control_polygon)
     raceline_pub.publish(rvizrace.raceline_path)
+
+    # ARROW MARKER
+
+    # set shape, Arrow: 0; Cube: 1 ; Sphere: 2 ; Cylinder: 3
+    arrow_marker = Marker()
+    arrow_marker.header.frame_id = "map"
+    arrow_marker.type = 0
+    arrow_marker.header.stamp = rospy.Time.now()
+    arrow_marker.id = 1
+    arrow_marker.scale.x = 0.6 # data.ranges[540]
+    arrow_marker.scale.y = 0.1
+    arrow_marker.scale.z = 0.1
+
+    arrow_marker.pose.position.x = odom_x
+    arrow_marker.pose.position.y = odom_y
+    arrow_marker.pose.position.z = 0.1
+    
+    quat = quaternion_from_euler(0, 0, math.radians(s_angle))
+    arrow_marker.pose.orientation.x = quat[0]
+    arrow_marker.pose.orientation.y = quat[1]
+    arrow_marker.pose.orientation.z = quat[2]
+    arrow_marker.pose.orientation.w = quat[3]
+
+    # Set the colorta
+    arrow_marker.color.r = 0.0
+    arrow_marker.color.g = 0.0
+    arrow_marker.color.b = 1.0
+    arrow_marker.color.a = 1.0
+
+    arrow_marker_pub.publish(arrow_marker)
 
 
 if __name__ == "__main__":
