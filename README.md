@@ -1,7 +1,9 @@
-# f1tenth-course-labs
+# f1tenth-autonomous-racing
 
 F1/10 Autonomous Racing Course at the University of Virginia
-see source: https://github.com/linklab-uva/f1tenth-course-labs
+* ros melodic, python
+* team 4 (hopper) of F25
+* source: https://github.com/linklab-uva/f1tenth-course-labs
 
 under `/race`:
 
