@@ -15,7 +15,7 @@ from geometry_msgs.msg import PoseStamped
 plan = []
 
 file_path = os.path.expanduser(
-    "~/catkin_ws/src/f1tenth_purepursuit/racelines/working_raceline.csv"
+    "~/catkin_ws/src/f1tenth_purepursuit/racelines/pure_pursuit.csv"
 )
 file = open(file_path, 'r')
 csv_reader = csv.reader(file, delimiter=",")

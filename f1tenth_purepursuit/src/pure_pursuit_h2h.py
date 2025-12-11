@@ -1,4 +1,18 @@
 #!/usr/bin/env python
+"""
+What we ran: 
+* current file, commented out state transitions
+* effectively, just pure pursuit with dynamic speed from obstacles
+* so we slow down when behind a car,
+* then we overtaking when our one raceline is open
+* needed slightly more tuning to follow raceline more effectively at varying speeds
+
+What we tried:
+* state machine transitions
+* states: following, preparing_overtake, overtaking, returning
+* generate overtake paths and smooth return curves
+* was not tuned well at all
+"""
 
 import os
 import sys
@@ -27,7 +41,7 @@ obstacle_cleared_idx = 0
 
 frame_id = "map"
 car_name = "car_4"
-trajectory_name = "working_raceline"
+trajectory_name = "pure_pursuit"
 
 # Overtaking parameters
 OFFSET_DISTANCE = 0.5  # 0.5
