@@ -1,10 +1,4 @@
 #!/usr/bin/env python
-"""
-Option 3: State Machine with Smooth Transitions
-- States: following, preparing_overtake, overtaking, returning
-- Generates overtake paths and smooth return curves
-- Most sophisticated approach with blended transitions
-"""
 
 import os
 import sys
@@ -324,7 +318,7 @@ def purepursuit_control_node(data):
     heading = tf.transformations.euler_from_quaternion(orientation_quat)[2]
 
     # Update state machine
-    state_machine_update(odom_x, odom_y, heading)
+    # state_machine_update(odom_x, odom_y, heading)
 
     command = AckermannDrive()
 
