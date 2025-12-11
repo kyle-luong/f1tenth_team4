@@ -1,7 +1,0 @@
-image: base_map222.pgm
-resolution: 0.050000
-origin: [-5.456413, -3.295306, 0.000000]
-negate: 0
-occupied_thresh: 0.65
-free_thresh: 0.196
-

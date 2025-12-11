@@ -1,0 +1,22 @@
+<launch>
+    <arg name = "car_name" default = "car_4"/>
+    <arg name = "trajectory_name" default = "raceline"/>
+    <arg name = "dist" default = "2.0"/>
+    <arg name = "wheelbase" default = "0.325"/>
+    <arg name = "max_vel" default = "60.0"/>
+    <arg name = "min_vel" default = "33.5"/>
+    <arg name = "file" default = "pure_pursuit.py"/>
+    <include file="$(find particle_filter)/launch/slam.launch" />    
+    <include file="$(find move_base)/launch/move_base.launch" >
+        <arg name="listen_offboard" value="true" />
+    </include>
+
+    <node pkg = "f1tenth_purepursuit" type = "$(arg file)" name = "pure_pursuit" output = "screen">
+        <param name = "car_name" value = "$(arg car_name)"/>
+        <param name = "trajectory_name" value = "$(arg trajectory_name)"/>
+        <param name = "dist" value = "$(arg dist)"/>
+        <param name = "max_vel" value = "$(arg max_vel)"/>
+        <param name = "min_vel" value = "$(arg min_vel)"/>
+        <param name = "wheelbase" value = "$(arg wheelbase)"/>
+    </node>
+</launch>
