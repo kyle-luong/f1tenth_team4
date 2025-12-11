@@ -263,7 +263,7 @@ def purepursuit_control_node(data):
     arrow_marker.pose.position.y = odom_y
     arrow_marker.pose.position.z = 0.1
     
-    quat = quaternion_from_euler(0, 0, math.radians(s_angle))
+    quat = quaternion_from_euler(0, 0, math.radians(angle))
     arrow_marker.pose.orientation.x = quat[0]
     arrow_marker.pose.orientation.y = quat[1]
     arrow_marker.pose.orientation.z = quat[2]
