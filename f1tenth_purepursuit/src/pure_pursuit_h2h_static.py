@@ -28,7 +28,7 @@ obstacle_points = []
 
 frame_id = "map"
 car_name = "car_4"
-trajectory_name = "optimal"  # Start with optimal
+trajectory_name = "test_raceline"  # Start with optimal
 
 # Overtaking parameters
 LOOKAHEAD_CHECK = 3.0  # meters ahead to check for obstacles

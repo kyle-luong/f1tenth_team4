@@ -33,15 +33,15 @@ obstacle_cleared_idx = 0
 
 frame_id = "map"
 car_name = "car_4"
-trajectory_name = "optimal"
+trajectory_name = "working_raceline"
 
 # Overtaking parameters
-OFFSET_DISTANCE = 0.8
-OBSTACLE_DETECT_DISTANCE = 2.0
-OBSTACLE_CLEARED_DISTANCE = 1.5
-RETURN_BLEND_WAYPOINTS = 25
-SCAN_ANGLE_MIN = 30
-SCAN_ANGLE_MAX = 150
+OFFSET_DISTANCE = 0.5  # 0.5
+OBSTACLE_DETECT_DISTANCE = 1.5  # 1.5
+OBSTACLE_CLEARED_DISTANCE = 1.5  # 1.5
+RETURN_BLEND_WAYPOINTS = 20     # 20
+SCAN_ANGLE_MIN = -15
+SCAN_ANGLE_MAX = 15
 
 command_pub = rospy.Publisher("/%s/offboard/command" % car_name, AckermannDrive, queue_size=100)
 polygon_pub = rospy.Publisher("/%s/purepursuit_control/visualize" % car_name, PolygonStamped, queue_size=1)
@@ -101,6 +101,8 @@ def laser_callback(scan_msg):
         if not np.isfinite(distance) or distance < scan_msg.range_min or distance > scan_msg.range_max:
             continue
         
+        if i >= len(angles):
+            return
         angle_deg = math.degrees(angles[i])
         
         if SCAN_ANGLE_MIN <= angle_deg <= SCAN_ANGLE_MAX:
@@ -124,6 +126,7 @@ def is_obstacle_ahead(odom_x, odom_y, heading):
         # Check if in front cone
         dist = math.sqrt((obs_map_x - odom_x)**2 + (obs_map_y - odom_y)**2)
         if dist < OBSTACLE_DETECT_DISTANCE:
+            # print("dist: ", dist , "OBSTACLE_DETECT_DISTANCE: ", OBSTACLE_DETECT_DISTANCE)
             return True
     
     return False
@@ -238,19 +241,25 @@ def state_machine_update(odom_x, odom_y, heading):
             rospy.loginfo("Obstacle cleared - overtaking")
             overtake_state = "overtaking"
             obstacle_cleared_idx = get_closest_index_on_path(odom_x, odom_y, original_plan)
-    
+
     elif overtake_state == "overtaking":
-        current_idx = get_closest_index_on_path(odom_x, odom_y, original_plan)
-        
-        # Check if we're far enough ahead
-        if current_idx > obstacle_cleared_idx + 15:
-            # Safe to return to racing line
-            rospy.loginfo("Returning to racing line")
+
+        if is_obstacle_ahead(odom_x, odom_y, heading):
+            # New car in the overtake path - abort overtake
+            rospy.loginfo("New obstacle in overtake lane - aborting overtake")
             overtake_state = "returning"
-            
-            # Generate smooth return path
             closest_idx = get_closest_index_on_path(odom_x, odom_y, original_plan)
             plan = blend_paths(odom_x, odom_y, original_plan, closest_idx, RETURN_BLEND_WAYPOINTS)
+        else:
+            current_idx = get_closest_index_on_path(odom_x, odom_y, original_plan)
+            if current_idx > obstacle_cleared_idx + 15:
+                # Safe to return to racing line
+                rospy.loginfo("Returning to racing line")
+                overtake_state = "returning"
+                
+                # Generate smooth return path
+                closest_idx = get_closest_index_on_path(odom_x, odom_y, original_plan)
+                plan = blend_paths(odom_x, odom_y, original_plan, closest_idx, RETURN_BLEND_WAYPOINTS)
     
     elif overtake_state == "returning":
         # Check if we're back on racing line
@@ -348,11 +357,40 @@ def purepursuit_control_node(data):
             p = (v - min_vel) / (max_vel - min_vel)
         else:
             p = 0.0
-        min_lookahead = 1.7
-        max_lookahead = 2.7
+        min_lookahead = 0.2
+        max_lookahead = 2
         lookahead = min_lookahead + (max_lookahead - min_lookahead) * p
         return lookahead
 
+    def obstacle_speed_cap():
+        """
+        Limit max speed based on distance to the nearest obstacle in front.
+        Uses obstacle_points already in car frame (x forward, y left).
+        """
+        if not obstacle_points:
+            return max_vel
+
+        min_forward_dist = None
+
+        for obs_x, obs_y in obstacle_points:
+            if obs_x <= 0.0:
+                continue
+            d = math.hypot(obs_x, obs_y)
+            if (min_forward_dist is None) or (d < min_forward_dist):
+                min_forward_dist = d
+
+        if min_forward_dist is None:
+            return max_vel
+
+        if min_forward_dist < 1.1:
+            return 0.0
+        elif min_forward_dist < 1.7:
+            return 15.0
+        elif min_forward_dist < 2.0:
+            return min_vel
+        else:
+            return max_vel
+        
     velocity = calculate_velocity(command.steering_angle)
     lookahead_distance = adaptive_lookahead(velocity)
 
@@ -376,7 +414,9 @@ def purepursuit_control_node(data):
         v1 = tf.transformations.quaternion_multiply(conj, target_vec)
         car_frame = tf.transformations.quaternion_multiply(v1, orientation_quat)
 
-        alpha = math.asin(car_frame[1] / lookahead_distance)
+        y_c = car_frame[1]
+
+        alpha = math.asin(max(-1.0, min(1.0, y_c / lookahead_distance)))
         steer = math.atan(2 * WHEELBASE_LEN * math.sin(alpha) / lookahead_distance)
         angle = math.degrees(steer)
         
@@ -388,13 +428,18 @@ def purepursuit_control_node(data):
 
     command.steering_angle = angle
     velocity = calculate_velocity(command.steering_angle)
+    lookahead_distance = adaptive_lookahead(velocity)
     command.speed = velocity
 
     # Adjust speed based on state
-    if overtake_state == "preparing_overtake":
-        command.speed *= 0.9  # Slow down slightly
-    elif overtake_state == "overtaking":
-        command.speed *= 1.05  # Push harder to complete pass
+    # if overtake_state == "preparing_overtake":
+    #     command.speed *= 0.9  # Slow down slightly
+    # elif overtake_state == "overtaking":
+    #     command.speed *= 1.05  # Push harder to complete pass
+
+    velocity = min(command.speed, obstacle_speed_cap())   
+    command.speed = velocity
+    lookahead_distance = adaptive_lookahead(velocity)
 
     rospy.loginfo_throttle(0.5,
         "state=%s obstacles=%d v=%.1f angle=%.1f" %

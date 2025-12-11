@@ -14,25 +14,29 @@ from geometry_msgs.msg import PolygonStamped, Point32, PoseStamped
 from nav_msgs.msg import Path
 from visualization_msgs.msg import Marker
 from tf.transformations import quaternion_from_euler
+from sensor_msgs.msg import LaserScan  # NEW: LiDAR
 
 plan = []
 path_resolution = []
 
 frame_id = "map"
 car_name = "car_4"
-trajectory_name = "working_raceline"
+trajectory_name = "test_raceline2"
 
 command_pub = rospy.Publisher("/%s/offboard/command" % car_name, AckermannDrive, queue_size=100)
 polygon_pub = rospy.Publisher("/%s/purepursuit_control/visualize" % car_name, PolygonStamped, queue_size=1)
 raceline_pub = rospy.Publisher("/raceline", Path, queue_size=1)
 path_pub = rospy.Publisher("/%s/purepursuit/path" % car_name, Path, queue_size=1)
-arrow_marker_pub = rospy.Publisher("/arrow_marker", Marker, queue_size = 20)
+arrow_marker_pub = rospy.Publisher("/arrow_marker", Marker, queue_size=20)
 
 wp_seq = 0
 control_polygon = PolygonStamped()
 
 STEERING_RANGE = 100.0
 WHEELBASE_LEN = 0.325
+
+# NEW: store latest LiDAR scan
+current_scan = None
 
 
 def _get_distance(p1, p2):
@@ -94,7 +98,8 @@ def get_param_or_input(name, default, cast=float):
         return default
 
 
-# def local_curvature(i):
+# Optional curvature function (fixed indentation, not used)
+def local_curvature(i):
     i0 = max(0, i - 1)
     i1 = i
     i2 = min(len(plan) - 1, i + 1)
@@ -121,8 +126,102 @@ def get_param_or_input(name, default, cast=float):
     return 1.0 / R
 
 
+# NEW: LiDAR callback
+def laser_callback(scan_msg):
+    global current_scan
+    current_scan = scan_msg
+
+
+# NEW: check for any obstacle within dist_thresh in +/- angle_window_deg
+def front_obstacle_detected(scan, dist_thresh=1.0, angle_window_deg=20.0):
+    """
+    Returns True if there is any obstacle closer than dist_thresh (m)
+    within +/- angle_window_deg in front of the car.
+    """
+    if scan is None:
+        return False
+
+    window_rad = math.radians(angle_window_deg)
+    angle = scan.angle_min
+
+    for r in scan.ranges:
+        if math.isinf(r) or math.isnan(r) or r <= 0.0:
+            angle += scan.angle_increment
+            continue
+
+        if -window_rad <= angle <= window_rad and r < dist_thresh:
+            return True
+
+        angle += scan.angle_increment
+
+    return False
+
+
+# NEW: simple largest-gap follower
+def gap_follow_steering(scan, max_angle_deg=90.0, gap_threshold=1.5):
+    """
+    Simple gap-following:
+    - Look for the largest contiguous region with range > gap_threshold.
+    - Only consider +/- max_angle_deg around the front.
+    - Return steering angle (degrees) toward the middle of that gap
+      in the car frame (0 = straight, +left, -right).
+    """
+    if scan is None:
+        return 0.0
+
+    max_angle_rad = math.radians(max_angle_deg)
+
+    valid = []
+    angle = scan.angle_min
+    for i, r in enumerate(scan.ranges):
+        if -max_angle_rad <= angle <= max_angle_rad:
+            if not math.isinf(r) and not math.isnan(r) and r > 0.0:
+                valid.append((i, angle, r))
+            else:
+                valid.append((i, angle, 0.0))
+        angle += scan.angle_increment
+
+    if not valid:
+        return 0.0
+
+    free = [(r > gap_threshold) for (_, _, r) in valid]
+
+    best_start = None
+    best_end = None
+    best_len = 0
+
+    cur_start = None
+    for idx, is_free in enumerate(free):
+        if is_free:
+            if cur_start is None:
+                cur_start = idx
+        else:
+            if cur_start is not None:
+                cur_len = idx - cur_start
+                if cur_len > best_len:
+                    best_len = cur_len
+                    best_start = cur_start
+                    best_end = idx - 1
+                cur_start = None
+
+    if cur_start is not None:
+        cur_len = len(free) - cur_start
+        if cur_len > best_len:
+            best_len = cur_len
+            best_start = cur_start
+            best_end = len(free) - 1
+
+    if best_start is None or best_len <= 0:
+        return 0.0
+
+    mid_idx = (best_start + best_end) // 2
+    _, mid_angle, _ = valid[mid_idx]
+
+    return math.degrees(mid_angle)
+
+
 def purepursuit_control_node(data):
-    global wp_seq
+    global wp_seq, current_scan
 
     if not plan:
         return
@@ -133,19 +232,6 @@ def purepursuit_control_node(data):
     odom_y = data.pose.position.y
     odom = [odom_x, odom_y]
 
-    # find closest point on path
-    def get_closest_index():
-        min_dist = float("inf")
-        min_idx = 0
-        for idx, pt in enumerate(plan):
-            d = _get_distance(odom, pt)
-            if d < min_dist:
-                min_dist = d
-                min_idx = idx
-        return min_idx
-
-    min_idx = get_closest_index()
-
     # robot heading
     orientation_quat = (
         data.pose.orientation.x,
@@ -154,8 +240,6 @@ def purepursuit_control_node(data):
         data.pose.orientation.w,
     )
     heading = tf.transformations.euler_from_quaternion(orientation_quat)[2]
-
-    # k = local_curvature(min_idx)
 
     max_vel = get_param_or_input("max_vel", 60.0, float)
     min_vel = get_param_or_input("min_vel", 30.0, float)
@@ -182,7 +266,93 @@ def purepursuit_control_node(data):
 
         return lookahead
 
-    velocity = calculate_velocity(command.steering_angle)
+    # ------------------------------------------------------------------
+    #  GAP-FOLLOWING OVERRIDE (if obstacle within 1m in +/-20 degrees)
+    # ------------------------------------------------------------------
+    if front_obstacle_detected(current_scan, dist_thresh=1.0, angle_window_deg=20.0):
+        gap_angle = gap_follow_steering(current_scan)  # degrees in car frame
+
+        raw_angle = 5 * gap_angle
+        angle_cmd = max(-STEERING_RANGE, min(STEERING_RANGE, raw_angle))
+
+        command.steering_angle = angle_cmd
+        velocity = calculate_velocity(angle_cmd)
+        lookahead_distance = adaptive_lookahead(velocity)
+        command.speed = velocity
+
+        rospy.loginfo_throttle(
+            0.1,
+            "mode=gap_follow ld=%.2f v=%.2f angle=%.2f"
+            % (lookahead_distance, command.speed, command.steering_angle),
+        )
+
+        command_pub.publish(command)
+
+        # Visualization: goal 1m along chosen gap direction in map frame
+        gap_angle_rad = math.radians(gap_angle)
+        goal_x = odom_x + math.cos(heading + gap_angle_rad) * 1.0
+        goal_y = odom_y + math.sin(heading + gap_angle_rad) * 1.0
+
+        base = Point32(x=odom_x, y=odom_y)
+        pose_pt = Point32(x=odom_x, y=odom_y)
+        goal_pt = Point32(x=goal_x, y=goal_y)
+
+        control_polygon.header.frame_id = frame_id
+        control_polygon.header.seq = wp_seq
+        control_polygon.header.stamp = rospy.Time.now()
+        control_polygon.polygon.points = [pose_pt, base, goal_pt]
+
+        wp_seq += 1
+
+        polygon_pub.publish(control_polygon)
+        raceline_pub.publish(rvizrace.raceline_path)
+
+        arrow_marker = Marker()
+        arrow_marker.header.frame_id = "map"
+        arrow_marker.type = 0
+        arrow_marker.header.stamp = rospy.Time.now()
+        arrow_marker.id = 1
+        arrow_marker.scale.x = 0.6
+        arrow_marker.scale.y = 0.1
+        arrow_marker.scale.z = 0.1
+
+        arrow_marker.pose.position.x = odom_x
+        arrow_marker.pose.position.y = odom_y
+        arrow_marker.pose.position.z = 0.1
+
+        quat = quaternion_from_euler(0, 0, math.radians(angle_cmd))
+        arrow_marker.pose.orientation.x = quat[0]
+        arrow_marker.pose.orientation.y = quat[1]
+        arrow_marker.pose.orientation.z = quat[2]
+        arrow_marker.pose.orientation.w = quat[3]
+
+        arrow_marker.color.r = 0.0
+        arrow_marker.color.g = 0.0
+        arrow_marker.color.b = 1.0
+        arrow_marker.color.a = 1.0
+
+        arrow_marker_pub.publish(arrow_marker)
+
+        return  # skip raceline pure pursuit this cycle
+
+    # ------------------------------------------------------------------
+    #  ORIGINAL PURE PURSUIT ON RACELINE (if no close front obstacle)
+    # ------------------------------------------------------------------
+
+    # find closest point on path
+    def get_closest_index():
+        min_dist = float("inf")
+        min_idx = 0
+        for idx, pt in enumerate(plan):
+            d = _get_distance(odom, pt)
+            if d < min_dist:
+                min_dist = d
+                min_idx = idx
+        return min_idx
+
+    min_idx = get_closest_index()
+
+    velocity = calculate_velocity(0.0)  # initial, steering not yet known
     lookahead_distance = adaptive_lookahead(velocity)
 
     # pick lookahead target point
@@ -210,7 +380,7 @@ def purepursuit_control_node(data):
         alpha = math.asin(car_frame[1] / lookahead_distance)
         steer = math.atan(2 * WHEELBASE_LEN * math.sin(alpha) / lookahead_distance)
         angle = math.degrees(steer)
-        
+
         return angle
 
     s_angle = calculate_steering()
@@ -224,10 +394,10 @@ def purepursuit_control_node(data):
 
     command.speed = velocity
 
-
-    rospy.loginfo_throttle(0.1,
-        "ld=%.2f v=%.2f angle=%.2f" %
-        (lookahead_distance, command.speed, command.steering_angle)
+    rospy.loginfo_throttle(
+        0.1,
+        "mode=pure_pursuit ld=%.2f v=%.2f angle=%.2f"
+        % (lookahead_distance, command.speed, command.steering_angle)
     )
 
     command_pub.publish(command)
@@ -248,21 +418,19 @@ def purepursuit_control_node(data):
     raceline_pub.publish(rvizrace.raceline_path)
 
     # ARROW MARKER
-
-    # set shape, Arrow: 0; Cube: 1 ; Sphere: 2 ; Cylinder: 3
     arrow_marker = Marker()
     arrow_marker.header.frame_id = "map"
     arrow_marker.type = 0
     arrow_marker.header.stamp = rospy.Time.now()
     arrow_marker.id = 1
-    arrow_marker.scale.x = 0.6 # data.ranges[540]
+    arrow_marker.scale.x = 0.6  # data.ranges[540]
     arrow_marker.scale.y = 0.1
     arrow_marker.scale.z = 0.1
 
     arrow_marker.pose.position.x = odom_x
     arrow_marker.pose.position.y = odom_y
     arrow_marker.pose.position.z = 0.1
-    
+
     quat = quaternion_from_euler(0, 0, math.radians(angle))
     arrow_marker.pose.orientation.x = quat[0]
     arrow_marker.pose.orientation.y = quat[1]
@@ -298,7 +466,15 @@ if __name__ == "__main__":
             purepursuit_control_node
         )
 
+        # NEW: subscribe to LiDAR
+        rospy.Subscriber(
+            "/%s/scan" % car_name,
+            LaserScan,
+            laser_callback
+        )
+
         rospy.spin()
 
     except rospy.ROSInterruptException:
         pass
+

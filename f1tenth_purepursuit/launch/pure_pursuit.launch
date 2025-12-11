@@ -5,12 +5,13 @@
     <arg name = "wheelbase" default = "0.325"/>
     <arg name = "max_vel" default = "60.0"/>
     <arg name = "min_vel" default = "33.5"/>
+    <arg name = "file" default = "pure_pursuit.py"/>
     <include file="$(find particle_filter)/launch/slam.launch" />    
     <include file="$(find move_base)/launch/move_base.launch" >
         <arg name="listen_offboard" value="true" />
     </include>
 
-    <node pkg = "f1tenth_purepursuit" type = "pure_pursuit.py" name = "pure_pursuit" output = "screen">
+    <node pkg = "f1tenth_purepursuit" type = "$(arg file)" name = "pure_pursuit" output = "screen">
         <param name = "car_name" value = "$(arg car_name)"/>
         <param name = "trajectory_name" value = "$(arg trajectory_name)"/>
         <param name = "dist" value = "$(arg dist)"/>

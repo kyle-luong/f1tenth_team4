@@ -221,12 +221,12 @@ if len(x_clicked) > 1:
         # -----------------------------
         offset_distance = 0.2  # meters
 
-        # offsets = {
-        #     "raceline_1.csv": -2 * offset_distance,
-        #     "raceline_2.csv": -1 * offset_distance,
-        #     "raceline_3.csv":  1 * offset_distance,
-        #     "raceline_4.csv":  2 * offset_distance,
-        # }
+        offsets = {
+            "raceline_1.csv": -2 * offset_distance,
+            "raceline_2.csv": -1 * offset_distance,
+            "raceline_3.csv":  1 * offset_distance,
+            "raceline_4.csv":  2 * offset_distance,
+        }
 
         # Plot all racelines
         fig, ax = plt.subplots()
